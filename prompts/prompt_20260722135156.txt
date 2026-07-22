@@ -1,0 +1,6 @@
+use the new skill (ui-ux-pro-max) to redefine the UI/UX of my current project
+
+Direction chosen: Vibrant & energetic (skill's "Vibrant & Block-based" style)
+Theme: Light + dark
+Palette: Event orange (#EA580C) + map blue (#2563EB), cheapest-price green (#16A34A)
+Typography: Fira Sans (UI) + Fira Code (numeric/prices)

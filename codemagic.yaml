@@ -1,0 +1,63 @@
+# Cloud-Mac build (Codemagic) that produces an UNSIGNED .ipa for AltStore.
+# No Apple Developer account needed — AltStore re-signs on install with your free Apple ID.
+#
+# Setup in the Codemagic UI:
+#   1. Connect this repo, pick the "ios-unsigned" workflow.
+#   2. Add environment variables (group "google"), marked secure:
+#        VITE_GOOGLE_MAPS_API_KEY = <your key>
+#        VITE_GOOGLE_MAP_ID       = <your vector map id, optional>
+#   3. Start build → download Essence.ipa from the artifacts.
+
+workflows:
+  ios-unsigned:
+    name: Essence — unsigned IPA (AltStore)
+    instance_type: mac_mini_m1
+    max_build_duration: 60
+    environment:
+      node: 18
+      xcode: latest
+      groups:
+        - google # provides VITE_GOOGLE_MAPS_API_KEY / VITE_GOOGLE_MAP_ID
+      vars:
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
+    scripts:
+      - name: Install dependencies
+        script: npm ci
+      - name: Build web app
+        script: npm run build
+      - name: Add iOS platform (fresh)
+        script: |
+          rm -rf ios
+          npx cap add ios
+      - name: Generate app icons
+        script: npx @capacitor/assets generate --ios || true
+      - name: Add location permission strings
+        script: |
+          PLIST="ios/App/App/Info.plist"
+          MSG="Pour afficher votre position et vous guider vers les stations d'essence."
+          /usr/libexec/PlistBuddy -c "Delete :NSLocationWhenInUseUsageDescription" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string $MSG" "$PLIST"
+      - name: Sync web assets into iOS project
+        script: npx cap sync ios
+      - name: Build unsigned archive
+        script: |
+          xcodebuild \
+            -workspace "$XCODE_WORKSPACE" \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath "$CM_BUILD_DIR/App.xcarchive" \
+            archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM=""
+      - name: Package unsigned IPA
+        script: |
+          cd "$CM_BUILD_DIR/App.xcarchive/Products/Applications"
+          mkdir -p Payload
+          mv App.app Payload/App.app
+          zip -r "$CM_BUILD_DIR/Essence.ipa" Payload
+    artifacts:
+      - Essence.ipa
