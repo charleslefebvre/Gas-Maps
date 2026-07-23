@@ -94,6 +94,18 @@ workflows:
           test -d App.app || { echo "ERROR: App.app is missing from the archive"; exit 1; }
           test -f App.app/Info.plist || { echo "ERROR: App.app/Info.plist is missing"; exit 1; }
           echo "App.app size: $(du -sh App.app | cut -f1)"
+          echo "=== App.app contents ==="
+          ls -la App.app
+          echo "=== size of each item in App.app ==="
+          du -sh App.app/* 2>/dev/null | sort -h
+          echo "=== App.app/Frameworks ==="
+          ls -la App.app/Frameworks 2>/dev/null || echo "!! NO Frameworks folder (dynamic frameworks not embedded)"
+          echo "=== web assets (App.app/public) ==="
+          ls App.app/public 2>/dev/null | head || echo "!! NO public folder (web build not bundled)"
+          echo "=== main binary ==="
+          ls -la App.app/App 2>/dev/null || echo "!! NO App binary"
+          echo "=== .framework anywhere in the archive ==="
+          find "$CM_BUILD_DIR/App.xcarchive" -name "*.framework" 2>/dev/null | head -50
           mkdir -p Payload
           mv App.app Payload/App.app
           # -y keeps symlinks intact, -X drops extra file attributes.
