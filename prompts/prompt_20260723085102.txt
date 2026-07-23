@@ -1,0 +1,4 @@
+Show a live "my location" (blue dot) on the map at all times, not just during active navigation.
+
+Context: The map only receives a userPosition (and thus draws the location dot) while turn-by-turn
+navigation is active. When idle, nav.userPosition is null, so no current-location marker appears.

@@ -39,6 +39,13 @@ give it to Codemagic securely instead.
 4. **Start new build** → wait ~5–10 min → download **`Essence.ipa`** from the
    build artifacts.
 
+> The build **fails fast** if `VITE_GOOGLE_MAPS_API_KEY` is missing: the
+> "Verify Google Maps key is present" step prints `PRESENT (len=…)` or `MISSING`
+> and stops the build (it never prints the key value). If you see `MISSING`, the
+> `google` group isn't attached to this workflow or the variable name is wrong.
+> Note: `.env.local` is gitignored and never reaches Codemagic — the key must be
+> set in the Codemagic env-var group, not just locally.
+
 ## 3. Let the map work inside the app
 
 The app runs in a WebView whose origin is `capacitor://localhost`. In Google

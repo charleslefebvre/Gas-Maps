@@ -9,6 +9,7 @@ import {
   RouteStation,
   RouteResult,
   GeoCoords,
+  LatLng,
 } from "./geo";
 import { useNavigation } from "./useNavigation";
 import SearchBar from "./SearchBar";
@@ -42,6 +43,7 @@ function App() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [stationRoute, setStationRoute] = useState<RouteResult | null>(null);
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
+  const [livePosition, setLivePosition] = useState<LatLng | null>(null);
 
   const selectedStation =
     selectedKey && filtered
@@ -77,6 +79,18 @@ function App() {
       .then(setStations)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!("geolocation" in navigator)) return;
+    const id = navigator.geolocation.watchPosition(
+      (pos) => setLivePosition([pos.coords.latitude, pos.coords.longitude]),
+      () => {
+        /* denied / unavailable — leave the idle map without a location dot */
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+    );
+    return () => navigator.geolocation.clearWatch(id);
   }, []);
 
   const resetResults = () => {
@@ -205,7 +219,7 @@ function App() {
           data={mapData}
           route={mapRoute}
           routeEnds={mapEnds}
-          userPosition={nav.userPosition}
+          userPosition={nav.active ? nav.userPosition : livePosition}
           follow={nav.active}
           dark={theme === "dark"}
           heading={nav.heading}

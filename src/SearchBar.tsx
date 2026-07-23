@@ -30,6 +30,7 @@ export default function SearchBar({
   const [fromCoords, setFromCoords] = useState<GeoCoords | null>(null);
   const [to, setTo] = useState("");
   const [toCoords, setToCoords] = useState<GeoCoords | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,17 +51,36 @@ export default function SearchBar({
           /* keep "Ma position" as the label */
         }
       })
-      .catch(() => {
-        /* permission denied / unavailable — leave the field empty */
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setNotice(
+          err instanceof Error
+            ? err.message
+            : "Localisation indisponible. Entrez une adresse de départ."
+        );
       });
     return () => {
       cancelled = true;
     };
   }, []);
 
+  const handleFromChange = (value: string) => {
+    setFrom(value);
+    if (notice) setNotice(null);
+  };
+
+  const handleToChange = (value: string) => {
+    setTo(value);
+    if (notice) setNotice(null);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!from.trim() || !to.trim()) return;
+    if (!from.trim() || !to.trim()) {
+      setNotice("Entrez un point de départ et une arrivée.");
+      return;
+    }
+    setNotice(null);
     onRoute(from.trim(), to.trim(), CORRIDOR_KM, DEFAULT_GAS_TYPE, fromCoords, toCoords);
   };
 
@@ -69,14 +89,14 @@ export default function SearchBar({
       <div className="route-fields">
         <AddressAutocomplete
           value={from}
-          onChange={setFrom}
+          onChange={handleFromChange}
           onResolve={setFromCoords}
           placeholder="Départ"
           ariaLabel="Point de départ"
         />
         <AddressAutocomplete
           value={to}
-          onChange={setTo}
+          onChange={handleToChange}
           onResolve={setToCoords}
           placeholder="Arrivée"
           ariaLabel="Point d'arrivée"
@@ -92,6 +112,7 @@ export default function SearchBar({
           </button>
         )}
       </div>
+      {notice && <p className="search-result-info">{notice}</p>}
     </form>
   );
 }

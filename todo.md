@@ -277,6 +277,58 @@ no Apple Developer account). Chosen route: Capacitor → Codemagic cloud-Mac bui
 - Google Maps JS key must allowlist `capacitor://localhost` or the map fails
   inside the app.
 
+## Iteration 11 — live "my location" on the idle map
+
+Problem: the current-location blue dot only appears during active turn-by-turn
+navigation. When idle, `nav.userPosition` is `null`, so the map draws no marker
+even though `StationsMap` already renders an idle dot (`circleIcon`) when given a
+position and `follow` is false.
+
+Plan:
+
+A. Live "my location" dot (`src/App.tsx`, no changes to `StationsMap`):
+- [x] Add `livePosition` state (`LatLng | null`).
+- [x] Add a `useEffect` that calls `navigator.geolocation.watchPosition` on mount,
+      updates `livePosition` on each reading, and `clearWatch` on unmount.
+      Silently ignore errors (permission denied → stays `null`, no dot).
+- [x] Pass `userPosition={nav.active ? nav.userPosition : livePosition}` to
+      `StationsMap` so navigation still owns the position while active (camera
+      follow/heading unchanged), and the idle map shows the live dot.
+
+B. "Trouver" feedback + location-denied message (`src/SearchBar.tsx`):
+- [x] Add a `notice` state shown below the form (reuse `.search-result-info`).
+- [x] Empty submit → set "Entrez un point de départ et une arrivée." and return
+      (instead of the current silent `return`).
+- [x] On the initial `geolocate()` rejection, surface the localized error message
+      (already produced by `geoErrorMessage`) so the blank Départ isn't a mystery.
+- [x] Clear the notice when either field changes.
+
+- [x] Verify `npx tsc --noEmit`, `npm run build`, `npm run lint` all clean.
+
+### Review (iteration 11)
+Changes made:
+- `src/App.tsx` — added `livePosition` state + a mount-time `watchPosition` effect
+  (cleaned up on unmount); the map now receives
+  `userPosition={nav.active ? nav.userPosition : livePosition}`, so the live blue
+  dot shows on the idle map and navigation still owns the position while active.
+- `src/SearchBar.tsx` — added a `notice` line under the form: empty "Trouver"
+  submit now says "Entrez un point de départ et une arrivée." instead of silently
+  no-op'ing; a denied/failed initial geolocation surfaces its localized message;
+  the notice clears as soon as either field changes.
+- `README.md` — documented the live-location + denied-permission behavior.
+- Verification: `tsc --noEmit` 0 errors · `eslint` 0 warnings · `vite build` OK.
+
+Notes / trade-offs:
+- The OS location prompt now appears on app open (idle GPS), not only on search/nav.
+- Two `watchPosition` watchers can run briefly during navigation (idle + nav);
+  harmless, but a future cleanup could pause the idle watch while `nav.active`.
+- Still gated on a working `VITE_GOOGLE_MAPS_API_KEY`: no map ⇒ no dot to show.
+
+Notes:
+- No new marker code: idle branch at `StationsMap.tsx:212` already draws the dot
+  and the camera only recenters when `follow` is true, so the map won't jump.
+- Enabling GPS at rest means the OS location prompt now appears on app open.
+
 ### Verification (iteration 10)
 - `npm run lint` → 0 · `npm run build` → success · `npx cap ls` runs (config valid).
 - iOS archive itself only builds on the cloud Mac (can't be verified from Windows).

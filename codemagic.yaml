@@ -24,6 +24,21 @@ workflows:
     scripts:
       - name: Install dependencies
         script: npm ci
+      - name: Verify Google Maps key is present
+        script: |
+          # Confirms the build environment has the key WITHOUT printing its value.
+          # Fails fast with a clear message so a missing key never ships silently.
+          if [ -z "$VITE_GOOGLE_MAPS_API_KEY" ]; then
+            echo "MISSING: VITE_GOOGLE_MAPS_API_KEY is empty."
+            echo "Add it to the 'google' env-var group (secure) attached to this workflow."
+            exit 1
+          fi
+          echo "PRESENT: VITE_GOOGLE_MAPS_API_KEY (len=${#VITE_GOOGLE_MAPS_API_KEY})"
+          if [ -n "$VITE_GOOGLE_MAP_ID" ]; then
+            echo "PRESENT: VITE_GOOGLE_MAP_ID (len=${#VITE_GOOGLE_MAP_ID})"
+          else
+            echo "NOTE: VITE_GOOGLE_MAP_ID is empty (optional — raster map will be used)."
+          fi
       - name: Build web app
         script: npm run build
       - name: Add iOS platform (fresh)

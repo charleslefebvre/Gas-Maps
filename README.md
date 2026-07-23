@@ -12,6 +12,9 @@ itinerary search, and a bottom sheet listing the cheapest gas along your route.
 - **Route search** — enter a From → To itinerary; a driving route is computed
   (OSRM) and stations within a chosen corridor of the route are ranked by price,
   shown as markers on the map and cards in a bottom sheet
+- **Live location** — a blue "my location" dot tracks your GPS on the idle map
+  (not only during navigation); if location permission is denied, the search form
+  shows a message instead of leaving the *Départ* field mysteriously blank
 - **Turn-by-turn navigation** — press *Démarrer* to start live navigation: the map
   follows your GPS (`watchPosition`), with a maneuver list + current-step
   highlighting, live ETA / distance remaining, the cheapest station still ahead on
