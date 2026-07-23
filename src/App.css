@@ -1043,6 +1043,36 @@ tbody td {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0.25rem 0;
+  cursor: pointer;
+}
+
+.sheet-close {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-foreground);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.sheet-close:hover {
+  border-color: var(--color-primary);
+  background: var(--color-muted);
 }
 
 .sheet-summary-text strong {

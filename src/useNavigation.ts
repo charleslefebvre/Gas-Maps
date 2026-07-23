@@ -11,7 +11,9 @@ import {
   projectOnRoute,
   pointAtDistance,
   bearing,
+  resolveHeading,
 } from "./geo";
+import { watchPosition, LivePosition } from "./location";
 import { GasStation } from "./types";
 
 const OFF_ROUTE_KM = 0.08;
@@ -59,13 +61,6 @@ function stepStartKm(route: RouteResult): number[] {
   return starts;
 }
 
-function watchErrorMessage(err: GeolocationPositionError): string {
-  if (err.code === err.PERMISSION_DENIED)
-    return "Localisation refusée. Navigation impossible.";
-  if (err.code === err.POSITION_UNAVAILABLE) return "Signal GPS indisponible.";
-  return "Signal GPS perdu…";
-}
-
 export function useNavigation(args: UseNavigationArgs) {
   const argsRef = useRef(args);
   argsRef.current = args;
@@ -85,7 +80,7 @@ export function useNavigation(args: UseNavigationArgs) {
   const [cameraTarget, setCameraTarget] = useState<LatLng | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const watchId = useRef<number | null>(null);
+  const stopWatch = useRef<(() => void) | null>(null);
   const navRouteRef = useRef<RouteResult | null>(null);
   const navStationsRef = useRef<RouteStation[]>([]);
   const cumRef = useRef<number[]>([]);
@@ -126,9 +121,9 @@ export function useNavigation(args: UseNavigationArgs) {
   );
 
   const onPosition = useCallback(
-    (pos: GeolocationPosition) => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
+    (pos: LivePosition) => {
+      const lat = pos.lat;
+      const lng = pos.lng;
       setUserPosition([lat, lng]);
 
       const route = navRouteRef.current;
@@ -147,7 +142,8 @@ export function useNavigation(args: UseNavigationArgs) {
         cumRef.current,
         Math.min(along + 0.05, totalKm)
       );
-      setHeading(bearing(herePoint, aheadPoint));
+      const routeBearing = bearing(herePoint, aheadPoint);
+      setHeading(resolveHeading(pos.heading, pos.speed, routeBearing));
       setCameraTarget(aheadPoint);
 
       const starts = startKmRef.current;
@@ -191,25 +187,19 @@ export function useNavigation(args: UseNavigationArgs) {
   const start = useCallback(() => {
     const { route, stations } = argsRef.current;
     if (!route) return;
-    if (!("geolocation" in navigator)) {
-      setError("La géolocalisation n'est pas supportée par ce navigateur.");
-      return;
-    }
     setError(null);
     applyRoute(route, stations);
     offHits.current = 0;
     setActive(true);
-    watchId.current = navigator.geolocation.watchPosition(
-      onPosition,
-      (err) => setError(watchErrorMessage(err)),
-      { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
+    stopWatch.current = watchPosition(onPosition, (err) =>
+      setError(err instanceof Error ? err.message : "Signal GPS perdu…")
     );
   }, [applyRoute, onPosition]);
 
   const stop = useCallback(() => {
-    if (watchId.current !== null) {
-      navigator.geolocation.clearWatch(watchId.current);
-      watchId.current = null;
+    if (stopWatch.current) {
+      stopWatch.current();
+      stopWatch.current = null;
     }
     setActive(false);
     setOffRoute(false);
@@ -221,9 +211,7 @@ export function useNavigation(args: UseNavigationArgs) {
 
   useEffect(
     () => () => {
-      if (watchId.current !== null) {
-        navigator.geolocation.clearWatch(watchId.current);
-      }
+      if (stopWatch.current) stopWatch.current();
     },
     []
   );

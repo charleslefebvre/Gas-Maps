@@ -11,7 +11,9 @@ itinerary search, and a bottom sheet listing the cheapest gas along your route.
 
 - **Route search** — enter a From → To itinerary; a driving route is computed
   (OSRM) and stations within a chosen corridor of the route are ranked by price,
-  shown as markers on the map and cards in a bottom sheet
+  shown as markers on the map and cards in a bottom sheet. Tap the sheet summary
+  to collapse/expand the list, or the **✕** to clear the search and return to the
+  plain map
 - **Live location** — a blue "my location" dot tracks your GPS on the idle map
   (not only during navigation); if location permission is denied, the search form
   shows a message instead of leaving the *Départ* field mysteriously blank
@@ -93,9 +95,14 @@ create a **Vector Map ID** (Cloud Console → *Map Management* → new Map ID, t
 VITE_GOOGLE_MAP_ID=your-map-id
 ```
 
-Without a Map ID, navigation still follows you (zoomed in, north-up). Note: a
-vector Map ID is styled in the Cloud Console, so the app's built-in dark map
-style only applies to the default (non-Map-ID) map.
+**The map only rotates with a vector Map ID.** Without one you get a raster map,
+which Google can't rotate — navigation still follows you but stays **north-up**
+(zoomed in). With a Map ID, the camera centers on you, tilts, and **rotates to your
+heading** so the map turns as you drive. Heading uses your **GPS course**
+(`coords.heading`) while moving (> ~4 km/h) and falls back to the route bearing when
+stopped or without a GPS course. Note: a vector Map ID is styled in the Cloud
+Console, so the app's built-in dark map style only applies to the default
+(non-Map-ID) map.
 
 ## Install on your iPhone (no App Store)
 

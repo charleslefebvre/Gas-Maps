@@ -93,10 +93,13 @@ Launch **Essence Québec** from its icon — full native app, GPS + navigation.
 
 ## Caveats
 
-- **GPS**: iOS 15+ WKWebView supports `navigator.geolocation`; the build adds the
-  required `NSLocationWhenInUseUsageDescription`. If live navigation misbehaves in
-  the wrapped app, the fix is to add the `@capacitor/geolocation` plugin — ask and
-  I'll wire it in.
+- **GPS**: Capacitor's WKWebView does **not** surface HTML5 `navigator.geolocation`
+  permission prompts on iOS, so the app uses the **`@capacitor/geolocation`** plugin
+  (native `CLLocationManager`) via `src/location.ts`, with a `navigator.geolocation`
+  fallback on the web/PWA. The build adds `NSLocationWhenInUseUsageDescription` and
+  `npx cap sync ios` installs the plugin pod — no extra CI step. On first launch the
+  app requests location; if the iOS prompt never appears, confirm Location Services
+  are on for the app in **Settings → Privacy → Location Services**.
 - **Map key referrer**: if the map shows "carte indisponible" in the app, it's the
   referrer allowlist (step 3).
 - Every code change = re-run the Codemagic build → reinstall the new `.ipa` via

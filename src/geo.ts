@@ -1,4 +1,5 @@
 import { GasStation } from "./types";
+import { getCurrentPosition } from "./location";
 
 export interface GeoCoords {
   lat: number;
@@ -234,6 +235,19 @@ export function projectOnRoute(
   return { crossKm, alongKm };
 }
 
+export function resolveHeading(
+  gpsHeading: number | null,
+  speedMps: number | null,
+  routeBearing: number
+): number {
+  const hasGpsCourse =
+    gpsHeading !== null &&
+    !Number.isNaN(gpsHeading) &&
+    speedMps !== null &&
+    speedMps > 1;
+  return hasGpsCourse ? gpsHeading : routeBearing;
+}
+
 export function bearing(a: LatLng, b: LatLng): number {
   const phi1 = toRad(a[0]);
   const phi2 = toRad(b[0]);
@@ -314,31 +328,9 @@ export function filterAlongRoute(
     .sort((a, b) => (a[gasType] as number) - (b[gasType] as number));
 }
 
-function geoErrorMessage(err: GeolocationPositionError): string {
-  if (err.code === err.PERMISSION_DENIED)
-    return "Accès à la position refusé. Autorisez la localisation ou entrez une adresse.";
-  if (err.code === err.POSITION_UNAVAILABLE)
-    return "Position indisponible pour le moment.";
-  return "La localisation a expiré. Réessayez.";
-}
-
-export function geolocate(): Promise<GeoCoords> {
-  return new Promise((resolve, reject) => {
-    if (!("geolocation" in navigator)) {
-      reject(new Error("La géolocalisation n'est pas supportée par ce navigateur."));
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) =>
-        resolve({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          displayName: "Ma position",
-        }),
-      (err) => reject(new Error(geoErrorMessage(err))),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-    );
-  });
+export async function geolocate(): Promise<GeoCoords> {
+  const pos = await getCurrentPosition();
+  return { lat: pos.lat, lng: pos.lng, displayName: "Ma position" };
 }
 
 export function filterByRadius(

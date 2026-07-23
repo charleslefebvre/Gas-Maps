@@ -1,0 +1,8 @@
+During navigation: focus on my current position, align the map to my GPS heading, and
+rotate the map as I turn (heads-up navigation).
+
+Findings:
+- Rotation/tilt only happens on a VECTOR map (StationsMap.tsx:232), gated on VITE_GOOGLE_MAP_ID.
+  Raster maps can't rotate -> requires a vector Map ID (config).
+- Heading currently = route bearing. Chosen behavior: GPS course (coords.heading) when moving
+  (speed > 1 m/s), falling back to the route bearing when stopped/no signal.

@@ -1,0 +1,6 @@
+After clicking "Trouver" I can't undo the search and can't hide the gas station list.
+
+Root cause: the expanded bottom sheet (z-index 700, 68vh) covers the top search card's
+"Effacer" button (z-index 600) on shorter screens, and the only collapse control is a tiny
+40x5px grip. Fix: add a ✕ close button on the sheet itself that FULLY CLEARS the search
+(resetResults), and make the summary row a large tap target to collapse/expand.

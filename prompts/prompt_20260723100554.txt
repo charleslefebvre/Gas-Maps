@@ -1,0 +1,9 @@
+The iOS app never asks for current-location permission.
+
+Root cause: Capacitor's WKWebView does not surface HTML5 navigator.geolocation permission
+prompts on iOS. The app must use the @capacitor/geolocation plugin (was not installed) to
+bridge to native CLLocationManager, trigger the prompt, and return positions.
+
+Plan: add @capacitor/geolocation, create src/location.ts (native plugin + web fallback,
+normalizing lat/lng/heading/speed), request permission on first use, and wire geo.ts,
+App.tsx (idle watch), and useNavigation.ts to the wrapper.

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@capacitor/core": "5.7.8",
+    "@capacitor/geolocation": "^5.0.8",
     "@capacitor/ios": "5.7.8",
     "@tanstack/react-table": "^8.21.3",
     "pako": "^2.1.0",

@@ -324,6 +324,82 @@ Notes / trade-offs:
   harmless, but a future cleanup could pause the idle watch while `nav.active`.
 - Still gated on a working `VITE_GOOGLE_MAPS_API_KEY`: no map ⇒ no dot to show.
 
+## Iteration 12 — dismiss / hide the results sheet
+
+Problem: after "Trouver", the expanded bottom sheet (`z-index: 700`, 68vh) covers
+the top search card's "Effacer" button (`z-index: 600`) on shorter screens, so the
+search can't be undone; the only collapse control was a tiny 40×5px grip.
+
+Changes made:
+- [x] `src/App.tsx` — added a **✕ close button** in the sheet summary row that
+      calls `resetResults` (fully clears the search → plain map); made the summary
+      text a `<button>` so tapping it collapses/expands the list (large target).
+      The grip handle still toggles too.
+- [x] `src/App.css` — button-reset styles for `.sheet-summary-text` (now `flex:1`)
+      and a rounded `.sheet-close` control with hover state.
+- [x] `README.md` — documented collapse-tap + ✕ clear.
+- [x] Verified `tsc --noEmit` 0 · `eslint` 0 · `vite build` OK.
+
+Note: kept z-index as-is; the sheet's own ✕ (z 700) is always reachable above the
+search card, so raising the card wasn't needed and avoids hiding the sheet header.
+
+## Iteration 13 — heads-up navigation (rotate map to GPS heading)
+
+Ask: on starting an itinerary, focus on my position and rotate the map to my
+heading (map turns as I turn).
+
+Root cause of "it doesn't turn": rotation only runs in the `VECTOR` branch
+(`StationsMap.tsx:232`, `moveCamera({heading})`), gated on `VITE_GOOGLE_MAP_ID`.
+Without a Map ID the app uses a raster map, which Google can't rotate → north-up.
+**Rotation requires a vector Map ID (config), not a code change.**
+
+Code change (heading source — chosen: GPS course + route fallback):
+- [x] `src/geo.ts` — new pure `resolveHeading(gpsHeading, speedMps, routeBearing)`:
+      returns GPS `coords.heading` when moving (`speed > 1` m/s and heading valid),
+      else the route bearing.
+- [x] `src/useNavigation.ts` — `onPosition` now feeds
+      `resolveHeading(pos.coords.heading, pos.coords.speed, routeBearing)` into
+      `setHeading` (was route bearing only). Camera already centers on the user via
+      the follow effect on the first GPS fix.
+- [x] `README.md` — clarified that rotation needs a vector Map ID and documented
+      the GPS-course heading.
+- [x] Verified `tsc --noEmit` 0 · `eslint` 0 · `vite build` OK.
+
+Required by the user (config, to actually see rotation):
+- Create a **vector Map ID** and set `VITE_GOOGLE_MAP_ID` in `.env.local` + the
+  Codemagic `google` group, then rebuild.
+
+Not done (available if wanted): device-compass heading (turn while stationary,
+needs iOS motion permission); seeding the first camera center from the idle
+`livePosition` so the snap is instant instead of on the first nav GPS fix.
+
+## Iteration 14 — iOS never asks for location (Capacitor Geolocation plugin)
+
+Problem: on the wrapped iOS app the location permission prompt never appears.
+Root cause: Capacitor's WKWebView does not surface HTML5 `navigator.geolocation`
+prompts to iOS. The `@capacitor/geolocation` plugin (native `CLLocationManager`)
+is required — it was not installed.
+
+Changes made:
+- [x] Added dependency `@capacitor/geolocation@^5`.
+- [x] New `src/location.ts` — unified wrapper: native plugin when
+      `Capacitor.isNativePlatform()`, else `navigator.geolocation`. Exposes
+      `requestLocationPermission()`, `getCurrentPosition()`, and
+      `watchPosition(onOk, onErr) → stop()`, normalizing lat/lng/heading/speed and
+      localizing errors.
+- [x] `src/geo.ts` — `geolocate()` now uses the wrapper (removed the direct
+      `navigator.geolocation` call + `geoErrorMessage`).
+- [x] `src/App.tsx` — idle "my location" watch uses the wrapper (this is what now
+      triggers the iOS prompt on app open).
+- [x] `src/useNavigation.ts` — nav watch uses the wrapper; numeric `watchId`
+      replaced with a `stopWatch` cleanup function; removed `watchErrorMessage`.
+- [x] `DEPLOY-IPHONE.md` — documented the plugin + no extra CI step.
+- [x] Verified `tsc --noEmit` 0 · `eslint` 0 · `vite build` OK (plugin web impl is
+      code-split into a small `web-*.js` chunk).
+
+CI: no `codemagic.yaml` change needed — `npx cap sync ios` installs the plugin pod
+and `NSLocationWhenInUseUsageDescription` is already added by the plist step.
+
 Notes:
 - No new marker code: idle branch at `StationsMap.tsx:212` already draws the dot
   and the camera only recenters when `follow` is true, so the map won't jump.

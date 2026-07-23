@@ -11,6 +11,7 @@ import {
   GeoCoords,
   LatLng,
 } from "./geo";
+import { watchPosition } from "./location";
 import { useNavigation } from "./useNavigation";
 import SearchBar from "./SearchBar";
 import StationList from "./StationList";
@@ -82,15 +83,13 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!("geolocation" in navigator)) return;
-    const id = navigator.geolocation.watchPosition(
-      (pos) => setLivePosition([pos.coords.latitude, pos.coords.longitude]),
+    const stop = watchPosition(
+      (pos) => setLivePosition([pos.lat, pos.lng]),
       () => {
         /* denied / unavailable — leave the idle map without a location dot */
-      },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+      }
     );
-    return () => navigator.geolocation.clearWatch(id);
+    return stop;
   }, []);
 
   const resetResults = () => {
@@ -263,7 +262,13 @@ function App() {
                 <span className="sheet-grip" />
               </button>
               <div className="sheet-summary">
-                <div className="sheet-summary-text">
+                <button
+                  type="button"
+                  className="sheet-summary-text"
+                  onClick={() => setSheetExpanded((v) => !v)}
+                  aria-expanded={sheetExpanded}
+                  aria-label={sheetExpanded ? "Réduire la liste" : "Voir la liste"}
+                >
                   <strong>
                     {selectedStation
                       ? selectedStation.name
@@ -274,12 +279,20 @@ function App() {
                       ? "Touchez une autre station pour changer"
                       : "Touchez une station pour y aller"}
                   </span>
-                </div>
+                </button>
                 {canNavigate && filtered.length > 0 && (
                   <button type="button" className="start-nav" onClick={startNav}>
                     ▶ {selectedStation ? "Y aller" : "Démarrer"}
                   </button>
                 )}
+                <button
+                  type="button"
+                  className="sheet-close"
+                  onClick={resetResults}
+                  aria-label="Fermer et effacer la recherche"
+                >
+                  ✕
+                </button>
               </div>
               {sheetExpanded && (
                 <div className="sheet-body">
