@@ -66,14 +66,18 @@ workflows:
           npx cap add ios
       - name: Generate app icons
         script: npx @capacitor/assets generate --ios || true
-      - name: Add location permission strings
-        script: |
-          PLIST="ios/App/App/Info.plist"
-          MSG="Pour afficher votre position et vous guider vers les stations d'essence."
-          /usr/libexec/PlistBuddy -c "Delete :NSLocationWhenInUseUsageDescription" "$PLIST" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string $MSG" "$PLIST"
       - name: Sync web assets into iOS project
         script: npx cap sync ios
+      - name: Add location permission strings
+        script: |
+          # Runs AFTER cap sync so nothing regenerates Info.plist afterwards.
+          PLIST="ios/App/App/Info.plist"
+          MSG="Affiche votre position sur la carte et vous guide vers les stations."
+          /usr/libexec/PlistBuddy -c "Delete :NSLocationWhenInUseUsageDescription" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string $MSG" "$PLIST"
+          echo "NSLocationWhenInUseUsageDescription set to:"
+          /usr/libexec/PlistBuddy -c "Print :NSLocationWhenInUseUsageDescription" "$PLIST" \
+            || { echo "ERROR: could not set NSLocationWhenInUseUsageDescription in $PLIST"; exit 1; }
       - name: Build unsigned archive
         script: |
           xcodebuild \
@@ -94,6 +98,10 @@ workflows:
           test -d App.app || { echo "ERROR: App.app is missing from the archive"; exit 1; }
           test -f App.app/Info.plist || { echo "ERROR: App.app/Info.plist is missing"; exit 1; }
           test -d App.app/Frameworks || { echo "ERROR: App.app/Frameworks is missing"; exit 1; }
+          # The location prompt only appears on iOS if this key survived into the built app.
+          echo "Location usage string in the BUILT app:"
+          /usr/libexec/PlistBuddy -c "Print :NSLocationWhenInUseUsageDescription" App.app/Info.plist \
+            || echo "!! WARNING: built app is missing NSLocationWhenInUseUsageDescription — iOS will NOT prompt for location"
           echo "App.app size: $(du -sh App.app | cut -f1)"
           mkdir -p Payload
           mv App.app Payload/App.app
