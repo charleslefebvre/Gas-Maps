@@ -23,6 +23,15 @@ workflows:
         - pattern: main
           include: true
           source: true
+    when:
+      # Skip the build when a push only touches docs/prompts (no app or CI change).
+      # Applies to webhook-triggered builds; manual "Start new build" always runs.
+      changeset:
+        includes:
+          - "**"
+        excludes:
+          - "**/*.md"
+          - "prompts/**"
     environment:
       node: 18
       xcode: latest
