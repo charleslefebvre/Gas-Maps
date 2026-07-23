@@ -36,8 +36,13 @@ give it to Codemagic securely instead.
    variables), each marked **Secure**:
    - `VITE_GOOGLE_MAPS_API_KEY` = your key
    - `VITE_GOOGLE_MAP_ID` = your vector Map ID (optional, for the 3D nav camera)
-4. **Start new build** → wait ~5–10 min → download **`Essence.ipa`** from the
+4. Builds now **start automatically on every push to `main`** (see the
+   `triggering:` block in `codemagic.yaml`). You can also hit **Start new build**
+   manually. Either way, wait ~5–10 min → download **`Essence.ipa`** from the
    build artifacts.
+   - Auto-triggering needs the **Codemagic webhook** on the GitHub repo. It's
+     added automatically when you connect the app; if pushes don't trigger a
+     build, add it under **App settings → Webhooks** (or re-connect the repo).
 
 > The build **fails fast** if `VITE_GOOGLE_MAPS_API_KEY` is missing: the
 > "Verify Google Maps key is present" step prints `PRESENT (len=…)` or `MISSING`

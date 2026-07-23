@@ -13,6 +13,16 @@ workflows:
     name: Essence — unsigned IPA (AltStore)
     instance_type: mac_mini_m1
     max_build_duration: 60
+    triggering:
+      # Auto-build on every push to main. Requires the Codemagic webhook on the
+      # repo (Codemagic adds it automatically for app-connected GitHub repos;
+      # otherwise add it under App settings → Webhooks).
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
     environment:
       node: 18
       xcode: latest
