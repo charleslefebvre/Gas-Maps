@@ -1,0 +1,6 @@
+Départ should default to the current location.
+
+It already auto-fills on mount, but if the location permission is denied/dismissed/slow there
+is no way to retry. Add a 📍 button in the Départ field to (re)set it to the current location on
+demand, refactor the GPS-fill into one reusable handler, keep the mount auto-fill, and show a
+"locating" state on the button.

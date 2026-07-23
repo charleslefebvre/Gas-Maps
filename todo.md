@@ -370,8 +370,12 @@ Required by the user (config, to actually see rotation):
   Codemagic `google` group, then rebuild.
 
 Not done (available if wanted): device-compass heading (turn while stationary,
-needs iOS motion permission); seeding the first camera center from the idle
-`livePosition` so the snap is instant instead of on the first nav GPS fix.
+needs iOS motion permission).
+
+Follow-up (done): the camera now snaps to the current position the instant nav
+starts — `useNavigation.start()` fetches a fast cached fix (`getCurrentPosition`)
+and feeds it to `onPosition`, and `App` falls back to the idle `livePosition`
+(`nav.userPosition ?? livePosition`) until the first nav GPS reading arrives.
 
 ## Iteration 14 — iOS never asks for location (Capacitor Geolocation plugin)
 
@@ -399,6 +403,39 @@ Changes made:
 
 CI: no `codemagic.yaml` change needed — `npx cap sync ios` installs the plugin pod
 and `NSLocationWhenInUseUsageDescription` is already added by the plist step.
+
+## Iteration 15 — Départ defaults to current location (+ retry button)
+
+Ask: Départ should default to the current location. It already auto-filled on
+mount, but a denied/dismissed/slow permission left it empty with no way to retry.
+
+Changes made:
+- [x] `src/SearchBar.tsx` — extracted the GPS-fill into a reusable
+      `fillFromCurrentLocation(isCancelled)` (useCallback); the mount effect calls
+      it (auto-fill preserved) and a new 📍 button re-runs it on demand. Added a
+      `locating` state so the button shows "…" while resolving.
+- [x] `src/App.css` — `.route-field-row` flex row + `.loc-button` styling.
+- [x] `README.md` — documented the default + 📍 button.
+- [x] Verified `tsc --noEmit` 0 · `eslint` 0 · `vite build` OK.
+
+Decision: the ✕/clear action does **not** re-default Départ (it keeps the field as
+the user left it); the 📍 button is the explicit way to return to current location.
+
+## Iteration 16 — keep Départ/Arrivée after stopping navigation
+
+Bug: tapping **Arrêter** cleared the Départ/Arrivée fields. Cause: `App` rendered
+`NavPanel` *instead of* `SearchBar` while navigating (`nav.active ? <NavPanel/> :
+<SearchBar/>`), so stopping nav **remounted** a fresh SearchBar — Départ re-defaulted
+and Arrivée reset to empty.
+
+Changes made:
+- [x] `src/App.tsx` — the search UI (`.map-top` + sheet) is now **always mounted**;
+      it's hidden via a `map-top--hidden` class while navigating, and `NavPanel`
+      renders as a separate overlay. SearchBar keeps its `from`/`to`/coords state
+      across start→stop, so the fields survive Arrêter. The sheet is hidden during
+      nav (`filtered !== null && !nav.active`).
+- [x] `src/App.css` — `.map-top--hidden { display: none; }`.
+- [x] Verified `tsc --noEmit` 0 · `eslint` 0 · `vite build` OK.
 
 Notes:
 - No new marker code: idle branch at `StationsMap.tsx:212` already draws the dot

@@ -218,7 +218,7 @@ function App() {
           data={mapData}
           route={mapRoute}
           routeEnds={mapEnds}
-          userPosition={nav.active ? nav.userPosition : livePosition}
+          userPosition={nav.active ? nav.userPosition ?? livePosition : livePosition}
           follow={nav.active}
           dark={theme === "dark"}
           heading={nav.heading}
@@ -226,13 +226,7 @@ function App() {
         />
       </div>
 
-      {nav.active ? (
-        <div className="nav-overlay">
-          <NavPanel nav={nav} onStop={stopNav} />
-        </div>
-      ) : (
-        <>
-          <div className="map-top">
+      <div className={nav.active ? "map-top map-top--hidden" : "map-top"}>
             <div className="map-topbar">
               <span className="map-title">Essence Québec</span>
               {themeToggle}
@@ -250,7 +244,7 @@ function App() {
             </div>
           </div>
 
-          {filtered !== null && (
+          {filtered !== null && !nav.active && (
             <div className={sheetExpanded ? "sheet sheet--open" : "sheet"}>
               <button
                 type="button"
@@ -306,7 +300,11 @@ function App() {
               )}
             </div>
           )}
-        </>
+
+      {nav.active && (
+        <div className="nav-overlay">
+          <NavPanel nav={nav} onStop={stopNav} />
+        </div>
       )}
     </div>
   );

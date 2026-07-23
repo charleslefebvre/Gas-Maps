@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { GasType, GeoCoords, geolocate, reverseGeocode } from "./geo";
 import { hasGooglePlaces, googleReverseGeocode } from "./googlePlaces";
 import AddressAutocomplete from "./AddressAutocomplete";
@@ -31,38 +31,48 @@ export default function SearchBar({
   const [to, setTo] = useState("");
   const [toCoords, setToCoords] = useState<GeoCoords | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    geolocate()
-      .then(async (coords) => {
-        if (cancelled) return;
+  const fillFromCurrentLocation = useCallback(
+    async (isCancelled: () => boolean = () => false) => {
+      setLocating(true);
+      try {
+        const coords = await geolocate();
+        if (isCancelled()) return;
         setFrom(coords.displayName);
         setFromCoords(coords);
+        setNotice(null);
         try {
           const name = hasGooglePlaces
             ? await googleReverseGeocode(coords.lat, coords.lng)
             : await reverseGeocode(coords.lat, coords.lng);
-          if (!cancelled) {
-            setFrom(name);
-            setFromCoords({ ...coords, displayName: name });
-          }
+          if (isCancelled()) return;
+          setFrom(name);
+          setFromCoords({ ...coords, displayName: name });
         } catch {
           /* keep "Ma position" as the label */
         }
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
+      } catch (err: unknown) {
+        if (isCancelled()) return;
         setNotice(
           err instanceof Error
             ? err.message
             : "Localisation indisponible. Entrez une adresse de départ."
         );
-      });
+      } finally {
+        if (!isCancelled()) setLocating(false);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    fillFromCurrentLocation(() => cancelled);
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fillFromCurrentLocation]);
 
   const handleFromChange = (value: string) => {
     setFrom(value);
@@ -87,13 +97,25 @@ export default function SearchBar({
   return (
     <form className="route-search" onSubmit={handleSubmit}>
       <div className="route-fields">
-        <AddressAutocomplete
-          value={from}
-          onChange={handleFromChange}
-          onResolve={setFromCoords}
-          placeholder="Départ"
-          ariaLabel="Point de départ"
-        />
+        <div className="route-field-row">
+          <AddressAutocomplete
+            value={from}
+            onChange={handleFromChange}
+            onResolve={setFromCoords}
+            placeholder="Départ"
+            ariaLabel="Point de départ"
+          />
+          <button
+            type="button"
+            className="loc-button"
+            onClick={() => fillFromCurrentLocation()}
+            disabled={locating}
+            aria-label="Utiliser ma position actuelle"
+            title="Ma position"
+          >
+            {locating ? "…" : "📍"}
+          </button>
+        </div>
         <AddressAutocomplete
           value={to}
           onChange={handleToChange}

@@ -13,7 +13,7 @@ import {
   bearing,
   resolveHeading,
 } from "./geo";
-import { watchPosition, LivePosition } from "./location";
+import { watchPosition, getCurrentPosition, LivePosition } from "./location";
 import { GasStation } from "./types";
 
 const OFF_ROUTE_KM = 0.08;
@@ -191,6 +191,13 @@ export function useNavigation(args: UseNavigationArgs) {
     applyRoute(route, stations);
     offHits.current = 0;
     setActive(true);
+    // Snap the camera to the current position immediately (fast cached fix),
+    // then let the live watch take over with high-accuracy updates.
+    getCurrentPosition()
+      .then(onPosition)
+      .catch(() => {
+        /* the watch below will provide the first fix */
+      });
     stopWatch.current = watchPosition(onPosition, (err) =>
       setError(err instanceof Error ? err.message : "Signal GPS perdu…")
     );

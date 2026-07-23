@@ -15,8 +15,9 @@ itinerary search, and a bottom sheet listing the cheapest gas along your route.
   to collapse/expand the list, or the **✕** to clear the search and return to the
   plain map
 - **Live location** — a blue "my location" dot tracks your GPS on the idle map
-  (not only during navigation); if location permission is denied, the search form
-  shows a message instead of leaving the *Départ* field mysteriously blank
+  (not only during navigation); the *Départ* field defaults to your current
+  location on load, with a 📍 button to re-set it on demand; if location permission
+  is denied, the search form shows a message instead of leaving *Départ* blank
 - **Turn-by-turn navigation** — press *Démarrer* to start live navigation: the map
   follows your GPS (`watchPosition`), with a maneuver list + current-step
   highlighting, live ETA / distance remaining, the cheapest station still ahead on

@@ -10,10 +10,19 @@ export interface LivePosition {
 
 const NATIVE: boolean = Capacitor.isNativePlatform();
 
-const OPTIONS = {
+// Départ default / one-shot lookup: prefer a fast, coarse, recently-cached fix so
+// it doesn't time out on desktops without GPS.
+const CURRENT_OPTIONS = {
+  enableHighAccuracy: false,
+  timeout: 20000,
+  maximumAge: 60000,
+};
+
+// Live tracking (idle dot + navigation): high accuracy, tolerant timeout.
+const WATCH_OPTIONS = {
   enableHighAccuracy: true,
-  timeout: 15000,
-  maximumAge: 2000,
+  timeout: 20000,
+  maximumAge: 5000,
 };
 
 interface RawCoords {
@@ -62,7 +71,7 @@ export async function getCurrentPosition(): Promise<LivePosition> {
         "Accès à la position refusé. Autorisez la localisation ou entrez une adresse."
       );
     }
-    const pos = await Geolocation.getCurrentPosition(OPTIONS);
+    const pos = await Geolocation.getCurrentPosition(CURRENT_OPTIONS);
     return toLive(pos.coords);
   }
 
@@ -74,7 +83,7 @@ export async function getCurrentPosition(): Promise<LivePosition> {
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve(toLive(pos.coords)),
       (err) => reject(new Error(locationErrorMessage(err))),
-      OPTIONS
+      CURRENT_OPTIONS
     );
   });
 }
@@ -93,7 +102,7 @@ export function watchPosition(
         onError(new Error("Localisation refusée."));
         return;
       }
-      Geolocation.watchPosition(OPTIONS, (pos, err) => {
+      Geolocation.watchPosition(WATCH_OPTIONS, (pos, err) => {
         if (err) {
           onError(new Error(locationErrorMessage(err)));
           return;
@@ -121,7 +130,7 @@ export function watchPosition(
   const id: number = navigator.geolocation.watchPosition(
     (pos) => onOk(toLive(pos.coords)),
     (err) => onError(new Error(locationErrorMessage(err))),
-    OPTIONS
+    WATCH_OPTIONS
   );
   return () => navigator.geolocation.clearWatch(id);
 }

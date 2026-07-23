@@ -920,6 +920,10 @@ tbody td {
   pointer-events: auto;
 }
 
+.map-top--hidden {
+  display: none;
+}
+
 .map-topbar {
   display: flex;
   align-items: center;
@@ -971,6 +975,34 @@ tbody td {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.route-field-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: stretch;
+}
+
+.loc-button {
+  flex-shrink: 0;
+  width: 2.75rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-card);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.loc-button:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-muted);
+}
+
+.loc-button:disabled {
+  opacity: 0.55;
+  cursor: progress;
 }
 
 .route-fields .autocomplete {
