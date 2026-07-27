@@ -6,7 +6,7 @@ import {
   useState,
 } from "react";
 import { GasStation } from "./types";
-import { GeoCoords, GasType, LatLng } from "./geo";
+import { GeoCoords, LatLng } from "./geo";
 import { loadGoogleMaps, hasGooglePlaces } from "./googlePlaces";
 
 const COLORS = {
@@ -15,6 +15,10 @@ const COLORS = {
   station: "#EA580C",
   user: "#2563EB",
 };
+
+// Top-down car silhouette (points "up" at rotation 0), used for the driver marker.
+const CAR_PATH =
+  "M0,-12 L4,-8 L4,-5 L7,-4 L7,-1.5 L4,-2.5 L4,8 Q4,12 0,12 Q-4,12 -4,8 L-4,-2.5 L-7,-1.5 L-7,-4 L-4,-5 L-4,-8 Z";
 
 const MAP_ID: string | undefined = import.meta.env.VITE_GOOGLE_MAP_ID;
 const VECTOR = Boolean(MAP_ID);
@@ -65,40 +69,6 @@ interface StationsMapProps {
   dark?: boolean;
   heading?: number;
   cameraTarget?: LatLng | null;
-  heatStations?: GasStation[];
-  gasType?: GasType;
-  heatmap?: boolean;
-}
-
-const HEAT_GRADIENT = [
-  "rgba(16, 185, 129, 0)",
-  "rgba(16, 185, 129, 0.45)",
-  "rgba(22, 163, 74, 0.75)",
-  "rgba(5, 150, 105, 0.95)",
-];
-
-interface HeatPoint {
-  location: google.maps.LatLng;
-  weight: number;
-}
-
-interface HeatLayer {
-  setData(data: HeatPoint[]): void;
-  setMap(map: google.maps.Map | null): void;
-}
-
-interface HeatOptions {
-  radius: number;
-  opacity: number;
-  dissipating: boolean;
-  gradient: string[];
-}
-
-function createHeatLayer(options: HeatOptions): HeatLayer {
-  const ctor = google.maps.visualization.HeatmapLayer as unknown as new (
-    opts: HeatOptions
-  ) => HeatLayer;
-  return new ctor(options);
 }
 
 export interface StationsMapHandle {
@@ -116,9 +86,6 @@ const StationsMap = forwardRef<StationsMapHandle, StationsMapProps>(
       dark = false,
       heading = 0,
       cameraTarget = null,
-      heatStations = [],
-      gasType = "priceRegulier",
-      heatmap = false,
     },
     ref
   ) {
@@ -128,7 +95,6 @@ const StationsMap = forwardRef<StationsMapHandle, StationsMapProps>(
   const markersRef = useRef<google.maps.Marker[]>([]);
   const endMarkersRef = useRef<google.maps.Marker[]>([]);
   const polylineRef = useRef<google.maps.Polyline | null>(null);
-  const heatmapRef = useRef<HeatLayer | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
   const trafficRef = useRef<google.maps.TrafficLayer | null>(null);
   // While true the camera tracks the user; a user drag sets it false (paused),
@@ -290,12 +256,12 @@ const StationsMap = forwardRef<StationsMapHandle, StationsMapProps>(
       const pos = { lat: userPosition[0], lng: userPosition[1] };
       const icon: google.maps.Symbol = follow
         ? {
-            path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-            scale: 6,
+            path: CAR_PATH,
+            scale: 1.4,
             fillColor: COLORS.user,
             fillOpacity: 1,
             strokeColor: "#ffffff",
-            strokeWeight: 2,
+            strokeWeight: 1.5,
             rotation: VECTOR ? 0 : heading,
           }
         : circleIcon(COLORS.user, 9, 4);
@@ -335,32 +301,6 @@ const StationsMap = forwardRef<StationsMapHandle, StationsMapProps>(
       map.setHeading(0);
     }
   }, [ready, follow]);
-
-  // Cheapness heatmap: brighter/greener where gas is cheaper for the chosen fuel.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!ready || !map) return;
-    const priced = heatStations.filter((s) => s[gasType] !== null);
-    if (!heatmap || priced.length === 0) {
-      heatmapRef.current?.setMap(null);
-      return;
-    }
-    const maxP = Math.max(...priced.map((s) => s[gasType] as number));
-    const points = priced.map((s) => ({
-      location: new google.maps.LatLng(s.lat, s.lng),
-      weight: maxP - (s[gasType] as number) + 0.15,
-    }));
-    if (!heatmapRef.current) {
-      heatmapRef.current = createHeatLayer({
-        radius: 26,
-        opacity: 0.7,
-        dissipating: true,
-        gradient: HEAT_GRADIENT,
-      });
-    }
-    heatmapRef.current.setData(points);
-    heatmapRef.current.setMap(map);
-  }, [ready, heatmap, heatStations, gasType]);
 
   if (failed) {
     return (

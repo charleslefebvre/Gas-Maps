@@ -5,7 +5,7 @@ import {
   formatDistanceKm,
   formatDurationSec,
 } from "./geo";
-import { DETOUR, SortMode } from "./constants";
+import { DETOUR, MEMBERSHIP_BRANDS, SortMode } from "./constants";
 import BrandLogo from "./BrandLogo";
 
 interface StationListProps {
@@ -13,8 +13,6 @@ interface StationListProps {
   gasType: GasType;
   route: RouteResult | null;
   sortMode: SortMode;
-  maxPrice: number;
-  maxDetourKm: number;
   selectedKey: string | null;
   onSelect: (station: RouteStation) => void;
 }
@@ -56,8 +54,6 @@ export default function StationList({
   gasType,
   route,
   sortMode,
-  maxPrice,
-  maxDetourKm,
   selectedKey,
   onSelect,
 }: StationListProps) {
@@ -70,21 +66,7 @@ export default function StationList({
     );
   }
 
-  const shown = data.filter(
-    (station) =>
-      (station[gasType] as number) <= maxPrice && station.distance <= maxDetourKm
-  );
-
-  if (shown.length === 0) {
-    return (
-      <div className="empty-state">
-        <strong>Aucune station avec ces filtres</strong>
-        Augmentez le prix ou le détour maximum.
-      </div>
-    );
-  }
-
-  const rows: Row[] = shown.map((station) => ({
+  const rows: Row[] = data.map((station) => ({
     station,
     detour: analyzeDetour(station[gasType] as number, station.distance),
   }));
@@ -136,7 +118,12 @@ export default function StationList({
             >
               <BrandLogo brand={station.brand} size={40} />
               <div className="station-info">
-                <strong>{station.name}</strong>
+                <span className="station-title">
+                  <strong>{station.brand || station.name}</strong>
+                  {MEMBERSHIP_BRANDS.includes(
+                    (station.brand || "").toLowerCase()
+                  ) && <span className="member-badge">Membre</span>}
+                </span>
                 {station.address && (
                   <span className="station-address">{station.address}</span>
                 )}
@@ -150,25 +137,30 @@ export default function StationList({
                     {" · "}+{formatMoney(detour.detourCost)}
                   </span>
                 ) : (
-                  <span className="station-prices">
-                    <span
-                      className={
-                        gasType === "priceRegulier" ? "pp pp--on" : "pp"
-                      }
-                    >
-                      R {formatPrice(station.priceRegulier)}
+                  <>
+                    <span className="station-sub">
+                      ↪ {formatDistanceKm(station.distance)} de détour
                     </span>
-                    <span
-                      className={gasType === "priceSuper" ? "pp pp--on" : "pp"}
-                    >
-                      S {formatPrice(station.priceSuper)}
+                    <span className="station-prices">
+                      <span
+                        className={
+                          gasType === "priceRegulier" ? "pp pp--on" : "pp"
+                        }
+                      >
+                        R {formatPrice(station.priceRegulier)}
+                      </span>
+                      <span
+                        className={gasType === "priceSuper" ? "pp pp--on" : "pp"}
+                      >
+                        S {formatPrice(station.priceSuper)}
+                      </span>
+                      <span
+                        className={gasType === "priceDiesel" ? "pp pp--on" : "pp"}
+                      >
+                        D {formatPrice(station.priceDiesel)}
+                      </span>
                     </span>
-                    <span
-                      className={gasType === "priceDiesel" ? "pp pp--on" : "pp"}
-                    >
-                      D {formatPrice(station.priceDiesel)}
-                    </span>
-                  </span>
+                  </>
                 )}
               </div>
               <div className="station-price">

@@ -42,9 +42,6 @@ function App() {
   const [resultInfo, setResultInfo] = useState<string | null>(null);
   const [gasType, setGasType] = useState<GasType>("priceRegulier");
   const [sortMode, setSortMode] = useState<SortMode>("price");
-  const [heatmap, setHeatmap] = useState(false);
-  const [maxPrice, setMaxPrice] = useState<number>(Infinity);
-  const [maxDetourKm, setMaxDetourKm] = useState<number>(Infinity);
   const [sheetExpanded, setSheetExpanded] = useState(true);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [stationRoute, setStationRoute] = useState<RouteResult | null>(null);
@@ -97,19 +94,6 @@ function App() {
     );
     return stop;
   }, []);
-
-  // Reset the price/detour filters to the full range on new results or fuel change.
-  useEffect(() => {
-    const prices = (filtered ?? [])
-      .map((s) => s[gasType])
-      .filter((p): p is number => p !== null);
-    setMaxPrice(prices.length ? Math.max(...prices) : Infinity);
-    setMaxDetourKm(
-      filtered && filtered.length
-        ? Math.max(...filtered.map((s) => s.distance))
-        : Infinity
-    );
-  }, [filtered, gasType]);
 
   const resetResults = () => {
     stopNav();
@@ -227,18 +211,6 @@ function App() {
     );
   }
 
-  const fuelPrices = (filtered ?? [])
-    .map((s) => s[gasType])
-    .filter((p): p is number => p !== null);
-  const priceLo = fuelPrices.length ? Math.min(...fuelPrices) : 0;
-  const priceHi = fuelPrices.length ? Math.max(...fuelPrices) : 0;
-  const detourHi =
-    filtered && filtered.length
-      ? Math.max(...filtered.map((s) => s.distance))
-      : routeCorridor;
-  const priceValue = Number.isFinite(maxPrice) ? maxPrice : priceHi;
-  const detourValue = Number.isFinite(maxDetourKm) ? maxDetourKm : detourHi;
-
   const mapData = nav.active ? nav.stations : filtered ?? [];
   const mapRoute = nav.active
     ? nav.remainingRoute ?? nav.route?.geometry ?? null
@@ -269,9 +241,6 @@ function App() {
           dark={theme === "dark"}
           heading={nav.heading}
           cameraTarget={nav.cameraTarget}
-          heatStations={stations}
-          gasType={gasType}
-          heatmap={heatmap}
         />
       </div>
 
@@ -284,16 +253,6 @@ function App() {
             : "map-fabs"
         }
       >
-        <button
-          type="button"
-          className={heatmap ? "map-fab map-fab--on" : "map-fab"}
-          onClick={() => setHeatmap((v) => !v)}
-          aria-pressed={heatmap}
-          aria-label="Carte de chaleur des prix"
-          title="Carte de chaleur des prix"
-        >
-          🌡️
-        </button>
         {(livePosition || nav.userPosition) && (
           <button
             type="button"
@@ -348,7 +307,7 @@ function App() {
                 >
                   <strong>
                     {selectedStation
-                      ? selectedStation.name
+                      ? selectedStation.brand || selectedStation.name
                       : `${filtered.length} stations`}
                   </strong>
                   <span className="sheet-sub">
@@ -404,45 +363,12 @@ function App() {
                         </button>
                       ))}
                     </div>
-                    <div className="filter-row">
-                      <label className="filter">
-                        <span className="filter-label">
-                          Prix max <b>{priceValue.toFixed(1)}¢</b>
-                        </span>
-                        <input
-                          type="range"
-                          min={priceLo}
-                          max={priceHi}
-                          step="0.1"
-                          value={priceValue}
-                          disabled={priceHi <= priceLo}
-                          onChange={(e) => setMaxPrice(parseFloat(e.target.value))}
-                        />
-                      </label>
-                      <label className="filter">
-                        <span className="filter-label">
-                          Détour max <b>{detourValue.toFixed(1)} km</b>
-                        </span>
-                        <input
-                          type="range"
-                          min={0}
-                          max={detourHi || routeCorridor}
-                          step="0.1"
-                          value={detourValue}
-                          onChange={(e) =>
-                            setMaxDetourKm(parseFloat(e.target.value))
-                          }
-                        />
-                      </label>
-                    </div>
                   </div>
                   <StationList
                     data={filtered}
                     gasType={gasType}
                     route={routeResult}
                     sortMode={sortMode}
-                    maxPrice={maxPrice}
-                    maxDetourKm={maxDetourKm}
                     selectedKey={selectedKey}
                     onSelect={handleSelectStation}
                   />

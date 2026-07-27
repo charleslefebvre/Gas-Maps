@@ -19,9 +19,6 @@ itinerary search, and a bottom sheet listing the cheapest gas along your route.
   to your position and resumes heading-up follow
 - **Live traffic** — an always-on Google traffic overlay colors the roads by
   current congestion
-- **Price heatmap** — a 🌡️ toggle paints a province-wide heatmap of gas
-  *cheapness* for the selected fuel (brighter green = cheaper), so you can spot the
-  deal zones at a glance
 - **Self-trimming route** — during navigation the drawn route consumes behind you,
   showing only the road still ahead
 - **Station list detail** — each result shows its street address and the driving
@@ -67,8 +64,8 @@ itinerary search, and a bottom sheet listing the cheapest gas along your route.
 The UI follows a design system generated with the **ui-ux-pro-max** skill
 (style: *Vibrant & Block-based*).
 
-- **Palette** — "Event orange + map blue": primary `#EA580C`, accent `#2563EB`,
-  cheapest-price highlight `#16A34A`. Full **light + dark** theme via semantic
+- **Palette** — "Indigo × Cyan": primary `#6366F1`, accent `#06B6D4`,
+  cheapest-price highlight `#10B981`. Full **light + dark** theme via semantic
   CSS tokens in `src/index.css` (toggle in the header, persisted to
   `localStorage`, defaults to the OS preference).
 - **Typography** — Fira Sans for UI, Fira Code (tabular figures) for prices so

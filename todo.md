@@ -422,12 +422,20 @@ station's own pump price; effective ¢/L = (fill + detour fuel) / fill. Time sho
 
 ## Iteration 22 — list detail + filters + home
 
-- [x] `StationList` — all-three-prices line (R/S/D, selected fuel bold);
-      client-side filter by `maxPrice` and `maxDetourKm` with a filtered-empty state.
-- [x] `App` — `maxPrice`/`maxDetourKm` sliders in the controls bar; an effect resets
-      them to the full range on new results / fuel change.
+- [x] `StationList` — all-three-prices line (R/S/D, selected fuel bold).
 - [x] `SearchBar` — save/use **home** (localStorage): "Enregistrer comme maison"
       stores the resolved Arrivée; a 🏠 button fills Arrivée with home.
+- Max-price / max-detour sliders were built then **removed** at the user's request;
+      the controls bar keeps only the fuel-type toggle and sort.
+
+## Iteration 23 — palette retheme + heatmap removal
+
+- [x] `src/index.css` — retheme to **Indigo × Cyan** (primary `#6366F1`, accent
+      `#06B6D4`, success `#10B981`) across light + both dark blocks; shadows retinted.
+- [x] Removed the price **heatmap** at the user's request: dropped the effect, layer
+      helpers, props, and 🌡️ FAB (`StationsMap`, `App`), reverted the Maps loader to
+      `libraries=places`, removed the unused `.map-fab--on` style.
+- [x] Verified `tsc --noEmit` 0 · `eslint` 0 · `vite build` OK.
 - [x] Verified `tsc --noEmit` 0 · `eslint` 0 · `vite build` OK.
 
 ## Iteration 13 — heads-up navigation (rotate map to GPS heading)

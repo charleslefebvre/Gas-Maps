@@ -10,6 +10,9 @@ export const DETOUR = {
   detourSpeedKmh: 40,
 };
 
+// Brands that require a paid membership to buy fuel (lowercased brand names).
+export const MEMBERSHIP_BRANDS = ["costco"];
+
 export const GAS_TYPES: { value: GasType; label: string }[] = [
   { value: "priceRegulier", label: "Régulier" },
   { value: "priceSuper", label: "Super" },

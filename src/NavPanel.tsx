@@ -74,10 +74,11 @@ export default function NavPanel({ nav, onStop }: NavPanelProps) {
         <div className="nav-best">
           <BrandLogo brand={nav.bestAhead.station.brand} size={34} />
           <div className="nav-best-info">
-            <strong>{nav.bestAhead.station.name}</strong>
+            <strong>
+              {nav.bestAhead.station.brand || nav.bestAhead.station.name}
+            </strong>
             <span className="nav-best-sub">
-              {nav.bestAhead.station.brand} · dans{" "}
-              {formatDistanceKm(nav.bestAhead.distanceAheadKm)}
+              dans {formatDistanceKm(nav.bestAhead.distanceAheadKm)}
             </span>
           </div>
           <span className="nav-best-price">
