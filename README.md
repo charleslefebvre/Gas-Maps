@@ -21,6 +21,9 @@ itinerary search, and a bottom sheet listing the cheapest gas along your route.
   current congestion
 - **Self-trimming route** — during navigation the drawn route consumes behind you,
   showing only the road still ahead
+- **Driver car marker** — a top-down car that rotates with your heading; on the
+  vector map (with a Map ID) it upgrades to a **3D car** rendered with three.js on a
+  `WebGLOverlayView`, sitting on the tilted 3D streets like Google Maps
 - **Station list detail** — each result shows its street address and the driving
   distance + time to reach it along the route (🚗), plus its detour from the route
 - **Fuel-type toggle** — switch Régulier / Super / Diesel; the route stations

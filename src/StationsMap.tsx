@@ -6,14 +6,59 @@ import {
   useState,
 } from "react";
 import { GasStation } from "./types";
+import * as THREE from "three";
 import { GeoCoords, LatLng } from "./geo";
 import { loadGoogleMaps, hasGooglePlaces } from "./googlePlaces";
 
+// Low-poly car built from primitives (z-up, meters, pointing +y at heading 0).
+function buildCar(): THREE.Group {
+  const car = new THREE.Group();
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: 0x6366f1,
+    metalness: 0.4,
+    roughness: 0.45,
+  });
+  const cabinMat = new THREE.MeshStandardMaterial({
+    color: 0x22d3ee,
+    metalness: 0.3,
+    roughness: 0.35,
+  });
+  const wheelMat = new THREE.MeshStandardMaterial({
+    color: 0x0f172a,
+    roughness: 0.85,
+  });
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 4.6, 1.1), bodyMat);
+  body.position.z = 0.9;
+  car.add(body);
+
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.9, 2.3, 0.85), cabinMat);
+  cabin.position.set(0, -0.2, 1.65);
+  car.add(cabin);
+
+  const wheelGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.45, 18);
+  const wheels: [number, number][] = [
+    [1.15, 1.5],
+    [-1.15, 1.5],
+    [1.15, -1.5],
+    [-1.15, -1.5],
+  ];
+  for (const [x, y] of wheels) {
+    const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+    wheel.rotation.z = Math.PI / 2;
+    wheel.position.set(x, y, 0.5);
+    car.add(wheel);
+  }
+
+  car.scale.set(1.4, 1.4, 1.4);
+  return car;
+}
+
 const COLORS = {
-  route: "#2563EB",
-  cheapest: "#16A34A",
-  station: "#EA580C",
-  user: "#2563EB",
+  route: "#06B6D4",
+  cheapest: "#10B981",
+  station: "#64748B",
+  user: "#6366F1",
 };
 
 // Top-down car silhouette (points "up" at rotation 0), used for the driver marker.
@@ -96,6 +141,15 @@ const StationsMap = forwardRef<StationsMapHandle, StationsMapProps>(
   const endMarkersRef = useRef<google.maps.Marker[]>([]);
   const polylineRef = useRef<google.maps.Polyline | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
+  const overlayRef = useRef<google.maps.WebGLOverlayView | null>(null);
+  const threeRef = useRef<{
+    scene: THREE.Scene;
+    camera: THREE.PerspectiveCamera;
+    renderer: THREE.WebGLRenderer;
+    car: THREE.Group;
+  } | null>(null);
+  const carPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  const carHeadingRef = useRef(0);
   const trafficRef = useRef<google.maps.TrafficLayer | null>(null);
   // While true the camera tracks the user; a user drag sets it false (paused),
   // and the recenter FAB sets it true again.
@@ -128,6 +182,67 @@ const StationsMap = forwardRef<StationsMapHandle, StationsMapProps>(
   useEffect(() => {
     if (follow) centeredRef.current = true;
   }, [follow]);
+
+  // 3D car via WebGLOverlayView (vector map only).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || !VECTOR) return;
+
+    const overlay = new google.maps.WebGLOverlayView();
+    overlayRef.current = overlay;
+
+    overlay.onAdd = () => {
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera();
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x334155, 2.4));
+      const dir = new THREE.DirectionalLight(0xffffff, 1.1);
+      dir.position.set(0.4, -1, 1.2);
+      scene.add(dir);
+      const car = buildCar();
+      car.visible = false;
+      scene.add(car);
+      threeRef.current = { scene, camera, renderer: null as never, car };
+    };
+
+    overlay.onContextRestored = ({ gl }) => {
+      if (!threeRef.current) return;
+      const renderer = new THREE.WebGLRenderer({
+        canvas: gl.canvas as HTMLCanvasElement,
+        context: gl,
+        ...gl.getContextAttributes(),
+      });
+      renderer.autoClear = false;
+      threeRef.current.renderer = renderer;
+    };
+
+    overlay.onDraw = ({ transformer }) => {
+      const three = threeRef.current;
+      const pos = carPosRef.current;
+      if (!three || !three.renderer || !pos) return;
+      const matrix = transformer.fromLatLngAltitude({
+        lat: pos.lat,
+        lng: pos.lng,
+        altitude: 0,
+      });
+      three.camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix);
+      three.car.rotation.set(0, 0, (-carHeadingRef.current * Math.PI) / 180);
+      three.renderer.render(three.scene, three.camera);
+      three.renderer.resetState();
+    };
+
+    overlay.onContextLost = () => {
+      threeRef.current?.renderer?.dispose();
+    };
+
+    overlay.setMap(map);
+
+    return () => {
+      overlay.setMap(null);
+      threeRef.current?.renderer?.dispose();
+      threeRef.current = null;
+      overlayRef.current = null;
+    };
+  }, [ready]);
 
   useEffect(() => {
     if (!hasGooglePlaces) {
@@ -252,7 +367,16 @@ const StationsMap = forwardRef<StationsMapHandle, StationsMapProps>(
     const map = mapRef.current;
     if (!ready || !map) return;
 
+    // On the vector map while navigating, the 3D car replaces the 2D marker.
+    const use3dCar = Boolean(follow && VECTOR && userPosition);
     if (userPosition) {
+      carPosRef.current = { lat: userPosition[0], lng: userPosition[1] };
+      carHeadingRef.current = heading;
+    }
+    if (threeRef.current) threeRef.current.car.visible = use3dCar;
+    overlayRef.current?.requestRedraw();
+
+    if (userPosition && !use3dCar) {
       const pos = { lat: userPosition[0], lng: userPosition[1] };
       const icon: google.maps.Symbol = follow
         ? {

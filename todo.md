@@ -436,6 +436,17 @@ station's own pump price; effective ¢/L = (fill + detour fuel) / fill. Time sho
       helpers, props, and 🌡️ FAB (`StationsMap`, `App`), reverted the Maps loader to
       `libraries=places`, removed the unused `.map-fab--on` style.
 - [x] Verified `tsc --noEmit` 0 · `eslint` 0 · `vite build` OK.
+
+## Iteration 24 — driver car marker + 3D car
+
+- [x] `StationsMap` — 2D top-down car marker (rotates with heading) replaced the
+      arrow (`CAR_PATH`).
+- [x] Added `three` + `@types/three`; on the vector map a `WebGLOverlayView` renders
+      a **3D car** built procedurally from primitives, oriented to heading and placed
+      via `transformer.fromLatLngAltitude`, redrawn each GPS fix. The 2D marker hides
+      while the 3D car is active (follow + vector).
+- Note: three.js pushes the main bundle to ~190 KB gzip; could lazy-load it
+      (vector-only dynamic import) to shrink initial load — deferred.
 - [x] Verified `tsc --noEmit` 0 · `eslint` 0 · `vite build` OK.
 
 ## Iteration 13 — heads-up navigation (rotate map to GPS heading)
