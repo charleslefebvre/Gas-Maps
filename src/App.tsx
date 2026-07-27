@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { fetchStations } from "./api";
 import { GasStation } from "./types";
 import {
@@ -12,10 +12,11 @@ import {
   LatLng,
 } from "./geo";
 import { watchPosition } from "./location";
+import { GAS_TYPES, SORT_MODES, SortMode } from "./constants";
 import { useNavigation } from "./useNavigation";
 import SearchBar from "./SearchBar";
 import StationList from "./StationList";
-import StationsMap from "./StationsMap";
+import StationsMap, { StationsMapHandle } from "./StationsMap";
 import NavPanel from "./NavPanel";
 import "./App.css";
 
@@ -40,11 +41,16 @@ function App() {
   const [routeCorridor, setRouteCorridor] = useState(2);
   const [resultInfo, setResultInfo] = useState<string | null>(null);
   const [gasType, setGasType] = useState<GasType>("priceRegulier");
+  const [sortMode, setSortMode] = useState<SortMode>("price");
+  const [heatmap, setHeatmap] = useState(false);
+  const [maxPrice, setMaxPrice] = useState<number>(Infinity);
+  const [maxDetourKm, setMaxDetourKm] = useState<number>(Infinity);
   const [sheetExpanded, setSheetExpanded] = useState(true);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [stationRoute, setStationRoute] = useState<RouteResult | null>(null);
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const [livePosition, setLivePosition] = useState<LatLng | null>(null);
+  const mapHandleRef = useRef<StationsMapHandle | null>(null);
 
   const selectedStation =
     selectedKey && filtered
@@ -91,6 +97,19 @@ function App() {
     );
     return stop;
   }, []);
+
+  // Reset the price/detour filters to the full range on new results or fuel change.
+  useEffect(() => {
+    const prices = (filtered ?? [])
+      .map((s) => s[gasType])
+      .filter((p): p is number => p !== null);
+    setMaxPrice(prices.length ? Math.max(...prices) : Infinity);
+    setMaxDetourKm(
+      filtered && filtered.length
+        ? Math.max(...filtered.map((s) => s.distance))
+        : Infinity
+    );
+  }, [filtered, gasType]);
 
   const resetResults = () => {
     stopNav();
@@ -163,6 +182,20 @@ function App() {
     }
   };
 
+  const changeGasType = (type: GasType) => {
+    setGasType(type);
+    if (!routeResult) return;
+    const results = filterAlongRoute(
+      stations,
+      routeResult.geometry,
+      routeCorridor,
+      type
+    );
+    setFiltered(results);
+    setSelectedKey(null);
+    setStationRoute(null);
+  };
+
   const themeToggle = (
     <button
       type="button"
@@ -194,9 +227,21 @@ function App() {
     );
   }
 
+  const fuelPrices = (filtered ?? [])
+    .map((s) => s[gasType])
+    .filter((p): p is number => p !== null);
+  const priceLo = fuelPrices.length ? Math.min(...fuelPrices) : 0;
+  const priceHi = fuelPrices.length ? Math.max(...fuelPrices) : 0;
+  const detourHi =
+    filtered && filtered.length
+      ? Math.max(...filtered.map((s) => s.distance))
+      : routeCorridor;
+  const priceValue = Number.isFinite(maxPrice) ? maxPrice : priceHi;
+  const detourValue = Number.isFinite(maxDetourKm) ? maxDetourKm : detourHi;
+
   const mapData = nav.active ? nav.stations : filtered ?? [];
   const mapRoute = nav.active
-    ? nav.route?.geometry ?? null
+    ? nav.remainingRoute ?? nav.route?.geometry ?? null
     : navRoute?.geometry ?? null;
   const mapEnds =
     usingStation && selectedStation && routeEnds
@@ -215,6 +260,7 @@ function App() {
     <div className="map-app">
       <div className="map-full">
         <StationsMap
+          ref={mapHandleRef}
           data={mapData}
           route={mapRoute}
           routeEnds={mapEnds}
@@ -223,7 +269,44 @@ function App() {
           dark={theme === "dark"}
           heading={nav.heading}
           cameraTarget={nav.cameraTarget}
+          heatStations={stations}
+          gasType={gasType}
+          heatmap={heatmap}
         />
+      </div>
+
+      <div
+        className={
+          filtered !== null && !nav.active
+            ? sheetExpanded
+              ? "map-fabs map-fabs--sheet-open"
+              : "map-fabs map-fabs--sheet"
+            : "map-fabs"
+        }
+      >
+        <button
+          type="button"
+          className={heatmap ? "map-fab map-fab--on" : "map-fab"}
+          onClick={() => setHeatmap((v) => !v)}
+          aria-pressed={heatmap}
+          aria-label="Carte de chaleur des prix"
+          title="Carte de chaleur des prix"
+        >
+          🌡️
+        </button>
+        {(livePosition || nav.userPosition) && (
+          <button
+            type="button"
+            className="map-fab"
+            onClick={() => mapHandleRef.current?.recenter()}
+            aria-label="Recentrer sur ma position"
+            title="Ma position"
+          >
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
+              <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className={nav.active ? "map-top map-top--hidden" : "map-top"}>
@@ -290,9 +373,76 @@ function App() {
               </div>
               {sheetExpanded && (
                 <div className="sheet-body">
+                  <div className="list-controls">
+                    <div className="seg" role="group" aria-label="Type de carburant">
+                      {GAS_TYPES.map((g) => (
+                        <button
+                          key={g.value}
+                          type="button"
+                          className={
+                            gasType === g.value ? "seg-btn seg-btn--on" : "seg-btn"
+                          }
+                          onClick={() => changeGasType(g.value)}
+                          aria-pressed={gasType === g.value}
+                        >
+                          {g.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="seg" role="group" aria-label="Trier">
+                      {SORT_MODES.map((s) => (
+                        <button
+                          key={s.value}
+                          type="button"
+                          className={
+                            sortMode === s.value ? "seg-btn seg-btn--on" : "seg-btn"
+                          }
+                          onClick={() => setSortMode(s.value)}
+                          aria-pressed={sortMode === s.value}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="filter-row">
+                      <label className="filter">
+                        <span className="filter-label">
+                          Prix max <b>{priceValue.toFixed(1)}¢</b>
+                        </span>
+                        <input
+                          type="range"
+                          min={priceLo}
+                          max={priceHi}
+                          step="0.1"
+                          value={priceValue}
+                          disabled={priceHi <= priceLo}
+                          onChange={(e) => setMaxPrice(parseFloat(e.target.value))}
+                        />
+                      </label>
+                      <label className="filter">
+                        <span className="filter-label">
+                          Détour max <b>{detourValue.toFixed(1)} km</b>
+                        </span>
+                        <input
+                          type="range"
+                          min={0}
+                          max={detourHi || routeCorridor}
+                          step="0.1"
+                          value={detourValue}
+                          onChange={(e) =>
+                            setMaxDetourKm(parseFloat(e.target.value))
+                          }
+                        />
+                      </label>
+                    </div>
+                  </div>
                   <StationList
                     data={filtered}
                     gasType={gasType}
+                    route={routeResult}
+                    sortMode={sortMode}
+                    maxPrice={maxPrice}
+                    maxDetourKm={maxDetourKm}
                     selectedKey={selectedKey}
                     onSelect={handleSelectStation}
                   />
@@ -304,6 +454,15 @@ function App() {
       {nav.active && (
         <div className="nav-overlay">
           <NavPanel nav={nav} onStop={stopNav} />
+        </div>
+      )}
+
+      {nav.active && (
+        <div className="speed-badge" aria-label="Vitesse actuelle">
+          <span className="speed-value">
+            {nav.speedKmh != null ? Math.round(nav.speedKmh) : "--"}
+          </span>
+          <span className="speed-unit">km/h</span>
         </div>
       )}
     </div>

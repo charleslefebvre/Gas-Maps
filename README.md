@@ -14,6 +14,27 @@ itinerary search, and a bottom sheet listing the cheapest gas along your route.
   shown as markers on the map and cards in a bottom sheet. Tap the sheet summary
   to collapse/expand the list, or the **✕** to clear the search and return to the
   plain map
+- **Pan & recenter** — drag the map freely (during navigation this pauses the
+  camera-follow so you can look ahead); a Google-style **recenter FAB** snaps back
+  to your position and resumes heading-up follow
+- **Live traffic** — an always-on Google traffic overlay colors the roads by
+  current congestion
+- **Price heatmap** — a 🌡️ toggle paints a province-wide heatmap of gas
+  *cheapness* for the selected fuel (brighter green = cheaper), so you can spot the
+  deal zones at a glance
+- **Self-trimming route** — during navigation the drawn route consumes behind you,
+  showing only the road still ahead
+- **Station list detail** — each result shows its street address and the driving
+  distance + time to reach it along the route (🚗), plus its detour from the route
+- **Fuel-type toggle** — switch Régulier / Super / Diesel; the route stations
+  re-filter and re-rank on the fly
+- **Sort & filter** — order by **Prix** (pump price), **Distance** (soonest along
+  the route), or **Rentable** — the *is-the-detour-worth-it?* view
+- **"Détour rentable?" calculator** — the *Rentable* sort weighs each station's
+  price savings on a fill against the fuel + time cost of the extra detour, shows
+  the **effective** ¢/L, badges the true best deal (**Meilleur réel**) and flags
+  stations that look cheap but cost more after the drive (**Détour ✗**). Assumptions
+  (fill size, consumption, detour speed) live in `src/constants.ts`
 - **Live location** — a blue "my location" dot tracks your GPS on the idle map
   (not only during navigation); the *Départ* field defaults to your current
   location on load, with a 📍 button to re-set it on demand; if location permission

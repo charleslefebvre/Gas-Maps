@@ -34,8 +34,10 @@ export interface NavState {
   distanceToManeuverKm: number;
   offRoute: boolean;
   rerouting: boolean;
+  speedKmh: number | null;
   bestAhead: BestAhead | null;
   route: RouteResult | null;
+  remainingRoute: LatLng[] | null;
   stations: RouteStation[];
   heading: number;
   cameraTarget: LatLng | null;
@@ -69,6 +71,8 @@ export function useNavigation(args: UseNavigationArgs) {
   const [navRoute, setNavRoute] = useState<RouteResult | null>(null);
   const [navStations, setNavStations] = useState<RouteStation[]>([]);
   const [userPosition, setUserPosition] = useState<LatLng | null>(null);
+  const [remainingRoute, setRemainingRoute] = useState<LatLng[] | null>(null);
+  const [speedKmh, setSpeedKmh] = useState<number | null>(null);
   const [remainingKm, setRemainingKm] = useState(0);
   const [remainingSec, setRemainingSec] = useState(0);
   const [upcomingIndex, setUpcomingIndex] = useState(0);
@@ -129,6 +133,10 @@ export function useNavigation(args: UseNavigationArgs) {
       const route = navRouteRef.current;
       if (!route) return;
 
+      setSpeedKmh(
+        pos.speed != null && pos.speed >= 0 ? pos.speed * 3.6 : null
+      );
+
       const proj = projectOnRoute(route.geometry, cumRef.current, lat, lng);
       const totalKm = route.distanceMeters / 1000;
       const along = Math.min(proj.alongKm, totalKm);
@@ -145,6 +153,12 @@ export function useNavigation(args: UseNavigationArgs) {
       const routeBearing = bearing(herePoint, aheadPoint);
       setHeading(resolveHeading(pos.heading, pos.speed, routeBearing));
       setCameraTarget(aheadPoint);
+
+      // Trim the drawn route to the part still ahead of the driver.
+      const cum = cumRef.current;
+      let sliceIdx = 0;
+      while (sliceIdx < cum.length && cum[sliceIdx] < along) sliceIdx++;
+      setRemainingRoute([herePoint, ...route.geometry.slice(sliceIdx)]);
 
       const starts = startKmRef.current;
       let idx = 0;
@@ -214,6 +228,8 @@ export function useNavigation(args: UseNavigationArgs) {
     setBestAhead(null);
     setUserPosition(null);
     setCameraTarget(null);
+    setRemainingRoute(null);
+    setSpeedKmh(null);
   }, []);
 
   useEffect(
@@ -232,8 +248,10 @@ export function useNavigation(args: UseNavigationArgs) {
     distanceToManeuverKm,
     offRoute,
     rerouting,
+    speedKmh,
     bestAhead,
     route: navRoute,
+    remainingRoute,
     stations: navStations,
     heading,
     cameraTarget,

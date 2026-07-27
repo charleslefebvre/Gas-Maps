@@ -32,6 +32,32 @@ export default function SearchBar({
   const [toCoords, setToCoords] = useState<GeoCoords | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
+  const [home, setHome] = useState<GeoCoords | null>(() => {
+    try {
+      const raw = localStorage.getItem("home");
+      return raw ? (JSON.parse(raw) as GeoCoords) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const useHome = () => {
+    if (!home) return;
+    setTo(home.displayName);
+    setToCoords(home);
+    setNotice(null);
+  };
+
+  const saveHome = () => {
+    if (!toCoords) return;
+    setHome(toCoords);
+    try {
+      localStorage.setItem("home", JSON.stringify(toCoords));
+    } catch {
+      /* storage unavailable */
+    }
+    setNotice("Maison enregistrée ✓");
+  };
 
   const fillFromCurrentLocation = useCallback(
     async (isCancelled: () => boolean = () => false) => {
@@ -116,14 +142,32 @@ export default function SearchBar({
             {locating ? "…" : "📍"}
           </button>
         </div>
-        <AddressAutocomplete
-          value={to}
-          onChange={handleToChange}
-          onResolve={setToCoords}
-          placeholder="Arrivée"
-          ariaLabel="Point d'arrivée"
-        />
+        <div className="route-field-row">
+          <AddressAutocomplete
+            value={to}
+            onChange={handleToChange}
+            onResolve={setToCoords}
+            placeholder="Arrivée"
+            ariaLabel="Point d'arrivée"
+          />
+          {home && (
+            <button
+              type="button"
+              className="loc-button"
+              onClick={useHome}
+              aria-label="Aller à la maison"
+              title="Maison"
+            >
+              🏠
+            </button>
+          )}
+        </div>
       </div>
+      {toCoords && (!home || home.displayName !== toCoords.displayName) && (
+        <button type="button" className="home-save" onClick={saveHome}>
+          🏠 Enregistrer comme maison
+        </button>
+      )}
       <div className="route-options">
         <button type="submit" className="search-button" disabled={routing}>
           {routing ? "Calcul…" : "Trouver"}

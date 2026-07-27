@@ -7,6 +7,7 @@ const BRAND_COLORS: Record<string, string> = {
   "petro-canada": "#D8232A",
   "petro-t": "#0072CE",
   ultramar: "#00539B",
+  belisle: "#C8102E",
   irving: "#0B6B3A",
   "couche-tard": "#E4002B",
   chevron: "#1B4F9C",
@@ -24,6 +25,8 @@ const slugify = (brand: string): string =>
   brand
     .toLowerCase()
     .trim()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9-]/g, "");
 

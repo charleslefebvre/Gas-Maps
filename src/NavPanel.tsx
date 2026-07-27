@@ -1,6 +1,13 @@
-import { formatDistanceKm } from "./geo";
+import { formatDistanceKm, formatDurationSec } from "./geo";
 import { NavState } from "./useNavigation";
 import BrandLogo from "./BrandLogo";
+
+const arrivalClock = (remainingSec: number): string => {
+  const arrival = new Date(Date.now() + remainingSec * 1000);
+  const hh = arrival.getHours().toString().padStart(2, "0");
+  const mm = arrival.getMinutes().toString().padStart(2, "0");
+  return `${hh}:${mm}`;
+};
 
 function ManeuverIcon({ instruction }: { instruction: string }) {
   const text = instruction.toLowerCase();
@@ -82,6 +89,20 @@ export default function NavPanel({ nav, onStop }: NavPanelProps) {
           Aucune station devant sur le trajet
         </div>
       )}
+
+      <div className="nav-footer">
+        <span className="nav-footer-metric">
+          {formatDistanceKm(nav.remainingKm)}
+        </span>
+        <span className="nav-footer-sep">·</span>
+        <span className="nav-footer-metric">
+          {formatDurationSec(nav.remainingSec)}
+        </span>
+        <span className="nav-footer-sep">·</span>
+        <span className="nav-footer-metric">
+          Arrivée {arrivalClock(nav.remainingSec)}
+        </span>
+      </div>
     </div>
   );
 }

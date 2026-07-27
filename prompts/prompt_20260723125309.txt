@@ -1,0 +1,8 @@
+Build three results-list features together:
+1. "Is the detour worth it?" calculator — weigh each station's price savings on a fill against the
+   fuel + time cost of the extra detour (2x cross-distance), flag stations that look cheap but cost
+   more after the drive; sort by effective (traffic-free) price.
+2. Fuel-type toggle — Régulier / Super / Diesel; re-filter the route stations on change.
+3. Sort & filter controls — sort by Prix / Rentable (effective) / Distance (soonest along route).
+
+Assumptions in constants.ts: 50 L fill, 9 L/100km, detour = 2x cross-distance, 40 km/h detour speed.

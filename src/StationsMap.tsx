@@ -1,6 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { GasStation } from "./types";
-import { GeoCoords, LatLng } from "./geo";
+import { GeoCoords, GasType, LatLng } from "./geo";
 import { loadGoogleMaps, hasGooglePlaces } from "./googlePlaces";
 
 const COLORS = {
@@ -59,27 +65,103 @@ interface StationsMapProps {
   dark?: boolean;
   heading?: number;
   cameraTarget?: LatLng | null;
+  heatStations?: GasStation[];
+  gasType?: GasType;
+  heatmap?: boolean;
 }
 
-export default function StationsMap({
-  data,
-  route,
-  routeEnds,
-  userPosition,
-  follow = false,
-  dark = false,
-  heading = 0,
-  cameraTarget = null,
-}: StationsMapProps) {
+const HEAT_GRADIENT = [
+  "rgba(16, 185, 129, 0)",
+  "rgba(16, 185, 129, 0.45)",
+  "rgba(22, 163, 74, 0.75)",
+  "rgba(5, 150, 105, 0.95)",
+];
+
+interface HeatPoint {
+  location: google.maps.LatLng;
+  weight: number;
+}
+
+interface HeatLayer {
+  setData(data: HeatPoint[]): void;
+  setMap(map: google.maps.Map | null): void;
+}
+
+interface HeatOptions {
+  radius: number;
+  opacity: number;
+  dissipating: boolean;
+  gradient: string[];
+}
+
+function createHeatLayer(options: HeatOptions): HeatLayer {
+  const ctor = google.maps.visualization.HeatmapLayer as unknown as new (
+    opts: HeatOptions
+  ) => HeatLayer;
+  return new ctor(options);
+}
+
+export interface StationsMapHandle {
+  recenter: () => void;
+}
+
+const StationsMap = forwardRef<StationsMapHandle, StationsMapProps>(
+  function StationsMap(
+    {
+      data,
+      route,
+      routeEnds,
+      userPosition,
+      follow = false,
+      dark = false,
+      heading = 0,
+      cameraTarget = null,
+      heatStations = [],
+      gasType = "priceRegulier",
+      heatmap = false,
+    },
+    ref
+  ) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const infoRef = useRef<google.maps.InfoWindow | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const endMarkersRef = useRef<google.maps.Marker[]>([]);
   const polylineRef = useRef<google.maps.Polyline | null>(null);
+  const heatmapRef = useRef<HeatLayer | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
+  const trafficRef = useRef<google.maps.TrafficLayer | null>(null);
+  // While true the camera tracks the user; a user drag sets it false (paused),
+  // and the recenter FAB sets it true again.
+  const centeredRef = useRef(true);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      recenter() {
+        const map = mapRef.current;
+        if (!map || !userPosition) return;
+        centeredRef.current = true;
+        const target = follow ? cameraTarget ?? userPosition : userPosition;
+        const center = { lat: target[0], lng: target[1] };
+        if (VECTOR && follow) {
+          map.moveCamera({ center, zoom: NAV_ZOOM, tilt: NAV_TILT, heading });
+        } else {
+          map.panTo(center);
+          const minZoom = follow ? 16 : 15;
+          const toZoom = follow ? 17 : 16;
+          if ((map.getZoom() ?? 0) < minZoom) map.setZoom(toZoom);
+        }
+      },
+    }),
+    [userPosition, follow, cameraTarget, heading]
+  );
+
+  useEffect(() => {
+    if (follow) centeredRef.current = true;
+  }, [follow]);
 
   useEffect(() => {
     if (!hasGooglePlaces) {
@@ -99,6 +181,13 @@ export default function StationsMap({
           ...(MAP_ID ? { mapId: MAP_ID } : {}),
         });
         infoRef.current = new google.maps.InfoWindow();
+        // Always-on live traffic overlay (colored roads).
+        trafficRef.current = new google.maps.TrafficLayer();
+        trafficRef.current.setMap(mapRef.current);
+        // A user drag pauses camera-follow so they can look around freely.
+        mapRef.current.addListener("dragstart", () => {
+          centeredRef.current = false;
+        });
         setReady(true);
       })
       .catch(() => {
@@ -226,7 +315,7 @@ export default function StationsMap({
       userMarkerRef.current = null;
     }
 
-    if (follow && userPosition) {
+    if (follow && userPosition && centeredRef.current) {
       const t = cameraTarget ?? userPosition;
       const center = { lat: t[0], lng: t[1] };
       if (VECTOR) {
@@ -247,6 +336,32 @@ export default function StationsMap({
     }
   }, [ready, follow]);
 
+  // Cheapness heatmap: brighter/greener where gas is cheaper for the chosen fuel.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const priced = heatStations.filter((s) => s[gasType] !== null);
+    if (!heatmap || priced.length === 0) {
+      heatmapRef.current?.setMap(null);
+      return;
+    }
+    const maxP = Math.max(...priced.map((s) => s[gasType] as number));
+    const points = priced.map((s) => ({
+      location: new google.maps.LatLng(s.lat, s.lng),
+      weight: maxP - (s[gasType] as number) + 0.15,
+    }));
+    if (!heatmapRef.current) {
+      heatmapRef.current = createHeatLayer({
+        radius: 26,
+        opacity: 0.7,
+        dissipating: true,
+        gradient: HEAT_GRADIENT,
+      });
+    }
+    heatmapRef.current.setData(points);
+    heatmapRef.current.setMap(map);
+  }, [ready, heatmap, heatStations, gasType]);
+
   if (failed) {
     return (
       <div className="map-fallback">
@@ -257,4 +372,7 @@ export default function StationsMap({
   }
 
   return <div ref={divRef} className="google-map" />;
-}
+  }
+);
+
+export default StationsMap;

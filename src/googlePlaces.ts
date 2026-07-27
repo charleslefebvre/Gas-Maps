@@ -22,7 +22,7 @@ export function loadGoogleMaps(): Promise<void> {
       return;
     }
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places&language=fr&region=CA`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places,visualization&language=fr&region=CA`;
     script.async = true;
     script.onload = () => resolve();
     script.onerror = () => reject(new Error("Échec du chargement de Google Maps."));

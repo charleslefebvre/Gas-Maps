@@ -343,6 +343,93 @@ Changes made:
 Note: kept z-index as-is; the sheet's own ✕ (z 700) is always reachable above the
 search card, so raising the card wasn't needed and avoids hiding the sheet header.
 
+## Iteration 17 — pan the map + Google-style recenter FAB
+
+Ask: be able to drag the map (incl. during navigation) with a recenter button.
+
+Changes made:
+- [x] `src/StationsMap.tsx` — converted to `forwardRef` exposing a `recenter()`
+      handle (`StationsMapHandle`). A `centeredRef` gates the nav camera-follow;
+      a `dragstart` listener sets it false (pauses follow so the user can pan),
+      and `recenter()`/nav-start set it true again. `recenter()` snaps to the user
+      (heading-up + tilt/zoom in nav, plain pan+zoom when idle).
+- [x] `src/App.tsx` — holds a `mapHandleRef`, renders a circular **recenter FAB**
+      (Material "my location" icon) whenever a position is known; it calls
+      `mapHandleRef.recenter()`. Positioned bottom-right, raised above the results
+      sheet (42vh / 68vh) via modifier classes; the nav panel is top-anchored so
+      the bottom-right stays clear during navigation.
+- [x] `src/App.css` — `.recenter-fab` (+ `--sheet` / `--sheet-open`).
+- [x] `README.md` — documented pan + recenter.
+- [x] Verified `tsc --noEmit` 0 · `eslint` 0 · `vite build` OK.
+
+## Iteration 18 — station list: address + ETA + live traffic
+
+- [x] `src/StationList.tsx` — each card shows the station **address** and a
+      **🚗 distance · time** line to reach it along the route (from `alongKm` and
+      the route's total distance/duration, proportional). Added `route` prop.
+- [x] `src/App.tsx` — passes `route={routeResult}` to `StationList`.
+- [x] `src/App.css` — `.station-address`, `.station-eta`.
+- [x] `src/StationsMap.tsx` — always-on `google.maps.TrafficLayer` (live congestion
+      colors) attached when the map is created.
+- [x] `README.md` — documented traffic + list detail.
+- [x] Verified `tsc --noEmit` 0 · `eslint` 0 · `vite build` OK.
+
+Note: ETA minutes come from the free OSRM route (free-flow speeds), so they are NOT
+traffic-adjusted. Traffic-aware times/routing would require the paid Google
+Directions API (`duration_in_traffic`), replacing OSRM — deferred.
+
+## Iteration 19 — detour calculator + fuel toggle + sort/filter
+
+- [x] `src/constants.ts` (new) — `DETOUR` assumptions (50 L, 9 L/100 km, round-trip
+      ×2, 40 km/h), `GAS_TYPES`, `SortMode`, `SORT_MODES`.
+- [x] `src/StationList.tsx` — `analyzeDetour()` computes extra km/min, detour fuel
+      cost, and an **effective total / effective ¢/L** per station. Sorts by
+      `sortMode` (price | detour | distance). In the **Rentable** (detour) view each
+      card shows the detour cost and effective price, badges the min-effective
+      station **Meilleur réel**, and flags a **Détour ✗** trap = cheaper pump price
+      but higher effective cost than the best real deal. Added `sortMode` prop.
+- [x] `src/App.tsx` — `sortMode` state; `changeGasType()` re-runs `filterAlongRoute`
+      on the current route when the fuel type changes; segmented fuel-type + sort
+      controls in the sheet body; passes `sortMode` to `StationList`.
+- [x] `src/App.css` — `.list-controls`, `.seg`/`.seg-btn`, `.station-detour`,
+      `.warn-badge`, `.detour-diff`.
+- [x] `README.md` — documented all three.
+- [x] Verified `tsc --noEmit` 0 · `eslint` 0 · `vite build` OK.
+
+Detour model: extra distance = 2 × perpendicular detour; detour fuel valued at the
+station's own pump price; effective ¢/L = (fill + detour fuel) / fill. Time shown
+(min) but not yet dollarized. All tunable in `constants.ts`.
+
+## Iteration 20 — price heatmap + self-trimming route line
+
+- [x] `src/googlePlaces.ts` — load the Maps `visualization` library.
+- [x] `src/StationsMap.tsx` — cheapness-weighted `HeatmapLayer` (green gradient)
+      built from all stations for the selected fuel; toggled via a `heatmap` prop.
+      Used a small typed `createHeatLayer` wrapper because the installed
+      `@types/google.maps` `HeatmapLayer` is a stub (missing setData/setMap).
+- [x] `src/App.tsx` — `heatmap` state + a 🌡️ FAB; stacked the map FABs into a
+      `.map-fabs` column (heatmap toggle + recenter) that rides above the sheet.
+- [x] `src/App.css` — `.map-fabs` / `.map-fab` (replaced `.recenter-fab`).
+- [x] Route line trims while driving: `useNavigation` computes `remainingRoute`
+      (from the projected position onward) each GPS fix; `App` draws it during nav.
+- [x] Verified `tsc --noEmit` 0 · `eslint` 0 · `vite build` OK.
+
+## Iteration 21 — nav readouts (speed + arrival clock)
+
+- [x] `useNavigation` — `speedKmh` (from `coords.speed`, m/s→km/h, null when absent).
+- [x] `App` — round speedometer badge (bottom-left) during nav.
+- [x] `NavPanel` — footer: remaining distance · time · `Arrivée HH:MM` (local clock).
+
+## Iteration 22 — list detail + filters + home
+
+- [x] `StationList` — all-three-prices line (R/S/D, selected fuel bold);
+      client-side filter by `maxPrice` and `maxDetourKm` with a filtered-empty state.
+- [x] `App` — `maxPrice`/`maxDetourKm` sliders in the controls bar; an effect resets
+      them to the full range on new results / fuel change.
+- [x] `SearchBar` — save/use **home** (localStorage): "Enregistrer comme maison"
+      stores the resolved Arrivée; a 🏠 button fills Arrivée with home.
+- [x] Verified `tsc --noEmit` 0 · `eslint` 0 · `vite build` OK.
+
 ## Iteration 13 — heads-up navigation (rotate map to GPS heading)
 
 Ask: on starting an itinerary, focus on my position and rotate the map to my
