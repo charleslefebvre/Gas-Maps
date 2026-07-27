@@ -5,14 +5,21 @@ import {
   geocode,
   fetchRoute,
   filterAlongRoute,
+  filterByRadius,
   GasType,
   RouteStation,
   RouteResult,
   GeoCoords,
   LatLng,
 } from "./geo";
-import { watchPosition } from "./location";
-import { GAS_TYPES, SORT_MODES, SortMode } from "./constants";
+import { watchPosition, getCurrentPosition } from "./location";
+import {
+  GAS_TYPES,
+  SORT_MODES,
+  SortMode,
+  NEARBY_RADII_KM,
+  DEFAULT_NEARBY_RADIUS_KM,
+} from "./constants";
 import { useNavigation } from "./useNavigation";
 import SearchBar from "./SearchBar";
 import StationList from "./StationList";
@@ -42,6 +49,10 @@ function App() {
   const [resultInfo, setResultInfo] = useState<string | null>(null);
   const [gasType, setGasType] = useState<GasType>("priceRegulier");
   const [sortMode, setSortMode] = useState<SortMode>("price");
+  const [mode, setMode] = useState<"route" | "nearby">("route");
+  const [nearbyRadiusKm, setNearbyRadiusKm] = useState<number>(
+    DEFAULT_NEARBY_RADIUS_KM
+  );
   const [sheetExpanded, setSheetExpanded] = useState(true);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [stationRoute, setStationRoute] = useState<RouteResult | null>(null);
@@ -114,14 +125,32 @@ function App() {
     }
     setSelectedKey(key);
     setStationRoute(null);
-    const origin = routeEnds?.from;
-    if (!origin) return;
+
+    let origin: GeoCoords | null = routeEnds?.from ?? null;
+    const destination: GeoCoords = {
+      lat: station.lat,
+      lng: station.lng,
+      displayName: station.name,
+    };
+    if (!origin) {
+      // Near-me mode: no route yet — start from the current location.
+      origin = livePosition
+        ? { lat: livePosition[0], lng: livePosition[1], displayName: "Ma position" }
+        : null;
+      if (!origin) {
+        try {
+          const pos = await getCurrentPosition();
+          origin = { lat: pos.lat, lng: pos.lng, displayName: "Ma position" };
+        } catch {
+          setResultInfo("Localisation requise pour y aller.");
+          return;
+        }
+      }
+      setRouteEnds({ from: origin, to: destination });
+    }
+
     try {
-      const line = await fetchRoute(origin, {
-        lat: station.lat,
-        lng: station.lng,
-        displayName: station.name,
-      });
+      const line = await fetchRoute(origin, destination);
       setStationRoute(line);
     } catch {
       setStationRoute(null);
@@ -168,6 +197,10 @@ function App() {
 
   const changeGasType = (type: GasType) => {
     setGasType(type);
+    if (mode === "nearby") {
+      runNearby(nearbyRadiusKm, type);
+      return;
+    }
     if (!routeResult) return;
     const results = filterAlongRoute(
       stations,
@@ -178,6 +211,47 @@ function App() {
     setFiltered(results);
     setSelectedKey(null);
     setStationRoute(null);
+  };
+
+  const runNearby = async (radiusKm: number, type: GasType) => {
+    setNearbyRadiusKm(radiusKm);
+    let center: GeoCoords | null = livePosition
+      ? { lat: livePosition[0], lng: livePosition[1], displayName: "Ma position" }
+      : null;
+    if (!center) {
+      try {
+        const pos = await getCurrentPosition();
+        center = { lat: pos.lat, lng: pos.lng, displayName: "Ma position" };
+      } catch {
+        setResultInfo("Localisation requise pour chercher autour de vous.");
+        return;
+      }
+    }
+    const results: RouteStation[] = filterByRadius(
+      stations,
+      center,
+      radiusKm,
+      type
+    ).map((s) => ({ ...s, alongKm: 0 }));
+    setRouteResult(null);
+    setRouteEnds(null);
+    setRouteCorridor(radiusKm);
+    setFiltered(results);
+    setSelectedKey(null);
+    setStationRoute(null);
+    setSheetExpanded(true);
+    setResultInfo(`${results.length} station(s) à ≤ ${radiusKm} km`);
+    requestAnimationFrame(() => mapHandleRef.current?.recenter());
+  };
+
+  const enterNearbyMode = () => {
+    setMode("nearby");
+    runNearby(nearbyRadiusKm, gasType);
+  };
+
+  const enterRouteMode = () => {
+    setMode("route");
+    resetResults();
   };
 
   const themeToggle = (
@@ -226,7 +300,7 @@ function App() {
           },
         }
       : routeEnds;
-  const canNavigate = routeResult !== null && !nav.active;
+  const canNavigate = navRoute !== null && !nav.active;
 
   return (
     <div className="map-app">
@@ -241,6 +315,7 @@ function App() {
           dark={theme === "dark"}
           heading={nav.heading}
           cameraTarget={nav.cameraTarget}
+          gasType={gasType}
         />
       </div>
 
@@ -274,12 +349,51 @@ function App() {
               {themeToggle}
             </div>
             <div className="search-card">
-              <SearchBar
-                onRoute={handleRoute}
-                onClear={resetResults}
-                routing={routing}
-                showClear={filtered !== null}
-              />
+              <div className="seg mode-seg" role="group" aria-label="Mode de recherche">
+                <button
+                  type="button"
+                  className={mode === "route" ? "seg-btn seg-btn--on" : "seg-btn"}
+                  onClick={enterRouteMode}
+                  aria-pressed={mode === "route"}
+                >
+                  Trajet
+                </button>
+                <button
+                  type="button"
+                  className={mode === "nearby" ? "seg-btn seg-btn--on" : "seg-btn"}
+                  onClick={enterNearbyMode}
+                  aria-pressed={mode === "nearby"}
+                >
+                  Autour de moi
+                </button>
+              </div>
+              {mode === "route" ? (
+                <SearchBar
+                  onRoute={handleRoute}
+                  onClear={resetResults}
+                  routing={routing}
+                  showClear={filtered !== null}
+                />
+              ) : (
+                <div className="nearby-controls">
+                  <span className="nearby-label">Rayon</span>
+                  <div className="seg">
+                    {NEARBY_RADII_KM.map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        className={
+                          nearbyRadiusKm === r ? "seg-btn seg-btn--on" : "seg-btn"
+                        }
+                        onClick={() => runNearby(r, gasType)}
+                        aria-pressed={nearbyRadiusKm === r}
+                      >
+                        {r} km
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {resultInfo && !filtered && (
                 <p className="search-result-info">{resultInfo}</p>
               )}
@@ -369,6 +483,7 @@ function App() {
                     gasType={gasType}
                     route={routeResult}
                     sortMode={sortMode}
+                    nearby={mode === "nearby"}
                     selectedKey={selectedKey}
                     onSelect={handleSelectStation}
                   />

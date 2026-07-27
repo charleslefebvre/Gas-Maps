@@ -9,6 +9,11 @@ A React + TypeScript web app that fetches and displays Quebec gas station data f
 A **map-first, route-based** app (Google-Maps style): full-screen map, a floating
 itinerary search, and a bottom sheet listing the cheapest gas along your route.
 
+- **Autour de moi (near-me)** — skip the destination: a mode toggle finds the
+  cheapest stations within a radius (2 / 5 / 10 km) of your current location, ranked
+  by price with distance-from-you shown
+- **Prices on the map** — each station pin is a price pill (¢/L for the selected
+  fuel); the cheapest is emerald, the rest slate
 - **Route search** — enter a From → To itinerary; a driving route is computed
   (OSRM) and stations within a chosen corridor of the route are ranked by price,
   shown as markers on the map and cards in a bottom sheet. Tap the sheet summary

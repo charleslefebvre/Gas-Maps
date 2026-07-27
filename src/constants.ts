@@ -13,6 +13,10 @@ export const DETOUR = {
 // Brands that require a paid membership to buy fuel (lowercased brand names).
 export const MEMBERSHIP_BRANDS = ["costco"];
 
+// "Autour de moi" (near-me) search radii, in km.
+export const NEARBY_RADII_KM = [2, 5, 10];
+export const DEFAULT_NEARBY_RADIUS_KM = 5;
+
 export const GAS_TYPES: { value: GasType; label: string }[] = [
   { value: "priceRegulier", label: "Régulier" },
   { value: "priceSuper", label: "Super" },

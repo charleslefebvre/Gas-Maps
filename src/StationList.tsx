@@ -13,6 +13,7 @@ interface StationListProps {
   gasType: GasType;
   route: RouteResult | null;
   sortMode: SortMode;
+  nearby: boolean;
   selectedKey: string | null;
   onSelect: (station: RouteStation) => void;
 }
@@ -54,6 +55,7 @@ export default function StationList({
   gasType,
   route,
   sortMode,
+  nearby,
   selectedKey,
   onSelect,
 }: StationListProps) {
@@ -128,8 +130,11 @@ export default function StationList({
                   <span className="station-address">{station.address}</span>
                 )}
                 <span className="station-eta">
-                  🚗 {formatDistanceKm(station.alongKm)}
-                  {eta ? ` · ${eta}` : ""}
+                  {nearby
+                    ? `📍 à ${formatDistanceKm(station.distance)} de vous`
+                    : `🚗 ${formatDistanceKm(station.alongKm)}${
+                        eta ? ` · ${eta}` : ""
+                      }`}
                 </span>
                 {detourView ? (
                   <span className="station-detour">
@@ -138,9 +143,11 @@ export default function StationList({
                   </span>
                 ) : (
                   <>
-                    <span className="station-sub">
-                      ↪ {formatDistanceKm(station.distance)} de détour
-                    </span>
+                    {!nearby && (
+                      <span className="station-sub">
+                        ↪ {formatDistanceKm(station.distance)} de détour
+                      </span>
+                    )}
                     <span className="station-prices">
                       <span
                         className={

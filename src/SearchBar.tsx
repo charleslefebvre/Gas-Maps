@@ -110,6 +110,14 @@ export default function SearchBar({
     if (notice) setNotice(null);
   };
 
+  const swapEnds = () => {
+    setFrom(to);
+    setTo(from);
+    setFromCoords(toCoords);
+    setToCoords(fromCoords);
+    if (notice) setNotice(null);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!from.trim() || !to.trim()) {
@@ -123,45 +131,56 @@ export default function SearchBar({
   return (
     <form className="route-search" onSubmit={handleSubmit}>
       <div className="route-fields">
-        <div className="route-field-row">
-          <AddressAutocomplete
-            value={from}
-            onChange={handleFromChange}
-            onResolve={setFromCoords}
-            placeholder="Départ"
-            ariaLabel="Point de départ"
-          />
-          <button
-            type="button"
-            className="loc-button"
-            onClick={() => fillFromCurrentLocation()}
-            disabled={locating}
-            aria-label="Utiliser ma position actuelle"
-            title="Ma position"
-          >
-            {locating ? "…" : "📍"}
-          </button>
-        </div>
-        <div className="route-field-row">
-          <AddressAutocomplete
-            value={to}
-            onChange={handleToChange}
-            onResolve={setToCoords}
-            placeholder="Arrivée"
-            ariaLabel="Point d'arrivée"
-          />
-          {home && (
+        <div className="route-fields-main">
+          <div className="route-field-row">
+            <AddressAutocomplete
+              value={from}
+              onChange={handleFromChange}
+              onResolve={setFromCoords}
+              placeholder="Départ"
+              ariaLabel="Point de départ"
+            />
             <button
               type="button"
               className="loc-button"
-              onClick={useHome}
-              aria-label="Aller à la maison"
-              title="Maison"
+              onClick={() => fillFromCurrentLocation()}
+              disabled={locating}
+              aria-label="Utiliser ma position actuelle"
+              title="Ma position"
             >
-              🏠
+              {locating ? "…" : "📍"}
             </button>
-          )}
+          </div>
+          <div className="route-field-row">
+            <AddressAutocomplete
+              value={to}
+              onChange={handleToChange}
+              onResolve={setToCoords}
+              placeholder="Arrivée"
+              ariaLabel="Point d'arrivée"
+            />
+            {home && (
+              <button
+                type="button"
+                className="loc-button"
+                onClick={useHome}
+                aria-label="Aller à la maison"
+                title="Maison"
+              >
+                🏠
+              </button>
+            )}
+          </div>
         </div>
+        <button
+          type="button"
+          className="swap-button"
+          onClick={swapEnds}
+          aria-label="Inverser le départ et l'arrivée"
+          title="Inverser"
+        >
+          ⇅
+        </button>
       </div>
       {toCoords && (!home || home.displayName !== toCoords.displayName) && (
         <button type="button" className="home-save" onClick={saveHome}>

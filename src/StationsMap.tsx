@@ -7,8 +7,26 @@ import {
 } from "react";
 import { GasStation } from "./types";
 import * as THREE from "three";
-import { GeoCoords, LatLng } from "./geo";
+import { GeoCoords, GasType, LatLng } from "./geo";
 import { loadGoogleMaps, hasGooglePlaces } from "./googlePlaces";
+
+// A rounded price pill used as a station marker (shows ¢/L for the chosen fuel).
+function pricePin(priceText: string, color: string): google.maps.Icon {
+  const w = 20 + priceText.length * 8;
+  const h = 24;
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">` +
+    `<rect x="1.5" y="1.5" width="${w - 3}" height="${h - 3}" rx="${(h - 3) / 2}" ` +
+    `fill="${color}" stroke="#ffffff" stroke-width="2"/>` +
+    `<text x="${w / 2}" y="${h / 2 + 4}" font-family="'Fira Sans',Arial,sans-serif" ` +
+    `font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">${priceText}</text>` +
+    `</svg>`;
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    anchor: new google.maps.Point(w / 2, h / 2),
+    scaledSize: new google.maps.Size(w, h),
+  };
+}
 
 // Low-poly car built from primitives (z-up, meters, pointing +y at heading 0).
 function buildCar(): THREE.Group {
@@ -114,6 +132,7 @@ interface StationsMapProps {
   dark?: boolean;
   heading?: number;
   cameraTarget?: LatLng | null;
+  gasType?: GasType;
 }
 
 export interface StationsMapHandle {
@@ -131,6 +150,7 @@ const StationsMap = forwardRef<StationsMapHandle, StationsMapProps>(
       dark = false,
       heading = 0,
       cameraTarget = null,
+      gasType = "priceRegulier",
     },
     ref
   ) {
@@ -289,14 +309,21 @@ const StationsMap = forwardRef<StationsMapHandle, StationsMapProps>(
     if (!ready || !map) return;
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
-    const hasRoute = Boolean(route && route.length > 1);
 
     data.forEach((station, index) => {
-      const cheapest = index === 0 && hasRoute;
+      const cheapest = index === 0;
+      const price = station[gasType];
+      const icon =
+        price != null
+          ? pricePin(
+              (price as number).toFixed(1),
+              cheapest ? COLORS.cheapest : COLORS.station
+            )
+          : circleIcon(COLORS.station, 6, 1.5);
       const marker = new google.maps.Marker({
         position: { lat: station.lat, lng: station.lng },
         map,
-        icon: circleIcon(cheapest ? COLORS.cheapest : COLORS.station, cheapest ? 8 : 6, 1.5),
+        icon,
         zIndex: cheapest ? 100 : 10,
       });
       marker.addListener("click", () => {
@@ -314,7 +341,7 @@ const StationsMap = forwardRef<StationsMapHandle, StationsMapProps>(
       });
       markersRef.current.push(marker);
     });
-  }, [ready, data, route]);
+  }, [ready, data, gasType]);
 
   useEffect(() => {
     const map = mapRef.current;

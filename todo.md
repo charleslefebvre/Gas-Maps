@@ -449,6 +449,20 @@ station's own pump price; effective ¢/L = (fill + detour fuel) / fill. Time sho
       (vector-only dynamic import) to shrink initial load — deferred.
 - [x] Verified `tsc --noEmit` 0 · `eslint` 0 · `vite build` OK.
 
+## Iteration 25 — near-me mode + prices on pins
+
+- [x] `constants.ts` — `NEARBY_RADII_KM` (2/5/10) + default.
+- [x] `App` — mode toggle (Trajet / Autour de moi); `runNearby()` uses the live/one
+      -shot position + `filterByRadius`, sets `filtered` (alongKm 0), clears the
+      route, recenters the map. Fuel change re-runs the active mode.
+- [x] `StationList` — `nearby` prop: shows "📍 à X de vous" and hides the detour line.
+- [x] `StationsMap` — station markers are **price pills** (SVG data-URI) showing
+      ¢/L for the selected fuel; cheapest emerald, others slate; re-render on fuel
+      change (`gasType` prop restored).
+- [x] Confirmed the feed's `Status` is `"En opération"` for all 2470 stations, so an
+      open-now filter isn't possible from this data (no hours) — skipped.
+- [x] Verified `tsc --noEmit` 0 · `eslint` 0 · `vite build` OK.
+
 ## Iteration 13 — heads-up navigation (rotate map to GPS heading)
 
 Ask: on starting an itinerary, focus on my position and rotate the map to my

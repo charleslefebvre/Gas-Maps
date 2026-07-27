@@ -1067,6 +1067,15 @@ tbody td {
 
 .route-fields {
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.route-fields-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
@@ -1075,6 +1084,26 @@ tbody td {
   display: flex;
   gap: 0.4rem;
   align-items: stretch;
+}
+
+.swap-button {
+  flex-shrink: 0;
+  align-self: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-accent);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.swap-button:hover {
+  border-color: var(--color-primary);
+  background: var(--color-muted);
 }
 
 .loc-button {
@@ -1354,6 +1383,27 @@ tbody td {
   background: var(--color-accent);
   border-color: var(--color-accent);
   color: var(--color-on-accent);
+}
+
+.mode-seg {
+  margin-bottom: 0.55rem;
+}
+
+.nearby-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.nearby-controls .seg {
+  flex: 1;
+}
+
+.nearby-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-muted-foreground);
+  flex-shrink: 0;
 }
 
 .station-title {
